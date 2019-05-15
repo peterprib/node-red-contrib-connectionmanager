@@ -1,0 +1,44 @@
+<script type="text/x-red" data-help-name="Get Connection">
+    <p>Get a connection for the message to be used in following nodes</p>
+    <p>On successfully getting connection message sent OK out otherwise send to failed connector</p>
+</script>
+
+<script type="text/x-red" data-template-name="Get Connection">
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+    	<label for="node-input-connection"><i class="fa fa-list-ul"></i> Connection</label>
+    	<input type="text" id="node-input-connection">
+  	</div>
+
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('Get Connection',{
+    	category: 'Connection Manager',
+        defaults: {
+            name: {value:"",required:false},
+            connection: {type:"Connection Manager"}
+        },
+	    inputs:1,
+        inputLabels: "",
+        outputs:2,
+        outputLabels: ["OK","Failed"],
+        icon: "iconfinder_dedicated-server_4263512.png",
+        label: function() {
+            return this.name||this._("Get Connection");
+        },
+        labelStyle: function() {
+            return "node_label_italic";
+        },
+        oneditprepare: function() {
+        },
+        oneditsave: function() {
+        },
+        oneditresize: function(size) {
+        }
+    });
+</script>

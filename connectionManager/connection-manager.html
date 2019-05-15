@@ -1,0 +1,80 @@
+<script type="text/x-red" data-help-name="Connection Manager">
+    <p>Define a connection manager. </p>
+</script>
+
+<script type="text/x-red" data-template-name="Connection Manager">
+
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input  id="node-config-input-name" type="text" >
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-driver"><i class="fa fa-list-ul"></i> Driver</label>
+        <select id="node-config-input-driver">
+            <option value="monetdb">MonetDB</option>
+            <option value="pg">Postgresql</option>
+        </select>
+    </div>
+
+  	<div class="form-row">
+        <label for="node-config-input-host"><i class="icon-bookmark"></i> Host</label>
+        <input type="text" id="node-config-input-host">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-port"><i class="icon-bookmark"></i> Port</label>
+        <input type="number" id="node-config-input-port">
+    </div>
+
+   <div class="form-row">
+        <label for="node-config-input-dbname"><i class="icon-bookmark"></i> Database</label>
+        <input type="text" id="node-config-input-dbname">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-user"><i class="icon-bookmark"></i> User</label>
+        <input type="text" id="node-config-input-user">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-password"><i class="icon-bookmark"></i> Password</label>
+        <input type="password" id="node-config-input-password">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-poolsize"><i class="icon-bookmark"></i> Pool Size</label>
+        <input type="number" id="node-config-input-poolsize" min="1' max ="200">
+    </div>
+    
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('Connection Manager',{
+        category: 'config',
+        icon: "iconfinder_network_1287518.png",
+        defaults: {
+        	name: {required:true},
+        	driver: {required:true},
+        	host: {value:"localhost" ,required:true},
+            port: {required:false},
+            dbname: {required:false},
+            poolsize: {value:10 ,required:true}
+        },
+        credentials: {
+            user: {value:'' ,required:false},
+            password: {type:'password' ,required:false }
+        },
+        label: function() {
+            return this.name||(this.driver+"/"+this.host+(+this.port?":"+this.port:"")+(this.dbname?"/"+this.dbname:""));
+        },
+        labelStyle: function() {
+            return "node_label_italic";
+        },
+  	    oneditprepare: function() {
+    		// this.credentials.username is set to the appropriate value
+    		// this.credentials.password is not set
+    		// this.credentials.has_password indicates if the property is present in the runtime
+  		}
+    });
+</script>

@@ -1,0 +1,38 @@
+{
+  "name": "node-red-contrib-connectionmanager",
+  "version": "0.0.1",
+  "description": "Node-RED implements monetdb.",
+  "dependencies": {
+    "monetdb": "*"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \\\"Error: no test specified\\\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peterprib/node-red-contrib-connectionmanager.git"
+  },
+  "keywords": [
+    "node-red",
+    "connection",
+    "manager",
+    "sql",
+    "database"
+  ],
+  "node-red": {
+    "nodes": {
+      "connection-manager": "connectionManager/connection-manager.js",
+      "admin-connections": "connectionManager/admin-connections.js",
+      "get-connection": "connectionManager/get-connection.js",
+      "release-connections": "connectionManager/release-connections.js",
+      "cm-statement": "connectionManager/cm-statement.js"
+    }
+  },
+  "author": "Peter Prib",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/peterprib/node-red-contrib-connectionmanager/issues"
+  },
+  "homepage": "https://github.com/peterprib/node-red-contrib-connectionmanager#readme"
+}

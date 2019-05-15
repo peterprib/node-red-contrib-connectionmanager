@@ -1,0 +1,117 @@
+<script type="text/x-red" data-template-name="cm-statement">
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+	<div class="form-row">
+    	<label for="node-input-connection"><i class="fa fa-user"></i> Connection</label>
+    	<input type="text" id="node-input-connection">
+  	</div>
+
+    <div class="form-row">
+        <label for="node-input-onErrorAction"><i class="fa fa-list-ul"></i> On error</label>
+        <select id="node-input-onErrorAction">
+            <option value="terminate">Terminate Message</option>
+            <option value="ignore">Ignore </option>
+            <option value="only">Error Output</option>
+            <option value="both">Both</option>
+            <option value="onlyWithRelease">Error Output and release connections</option>
+        </select>
+    </div>
+
+    <div class="form-row" style="margin-bottom: 0px;">
+        <label for="" style="width: unset;" id="node-input-statementlabel"><i class="fa fa-edit"></i> Statement</label>
+    </div>
+    
+    <div>
+        <input type="hidden" id="node-input-statement" autofocus="autofocus">
+    </div>
+    
+    <div class="form-row node-text-editor-row">
+        <div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-input-statement-editor" ></div>
+    </div>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('cm-statement',{
+        color:"rgb(243, 181, 103)",
+        category: 'Connection Manager',
+        defaults: {
+            name: {value:"",required:false},
+            connection: {required:false},
+            statement: {value:"",required:true},
+            onErrorAction: {value:"terminate",required:true}
+        },
+        inputs:1,
+        inputLabels: "",
+        outputs:2,
+        outputLabels: ["OK","Error"],
+        icon: "arrow-in.png",
+        label: function() {
+            return this.name||this._("cm-statement");
+        },
+        labelStyle: function() {
+            return this.name?"node_label_italic":"";
+        },
+
+        oneditprepare: function() {
+            var ace = this;
+            this.editor = RED.editor.createEditor({
+                id: 'node-input-statement-editor',
+                mode: 'ace/mode/sql',
+                value: $("#node-input-statement").val(),
+                globals: {
+                    msg:true,
+                    context:true,
+                    RED: true,
+                    util: true,
+                    flow: true,
+                    global: true,
+                    console: true,
+                    Buffer: true,
+                    setTimeout: true,
+                    clearTimeout: true,
+                    setInterval: true,
+                    clearInterval: true
+                }
+            });
+        },
+        oneditsave: function() {
+            $("#node-input-statement").val(this.editor.getValue());
+            this.editor.destroy();
+            delete this.editor;
+        },
+        oneditresize: function(size) {
+            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+            var height = $("#dialog-form").height();
+            for (var i=0; i<rows.size(); i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-text-editor-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            $(".node-text-editor").css("height",height+"px");
+            this.editor.resize();
+        }
+    });
+
+</script>
+
+<script type="text/x-red" data-help-name="cm-statement">
+    <p>Execute Statement </p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>msg <span class="property-type">payload</span></dt>
+        <dd>incoming message with payload</dd>
+        <dt>msg <span class="property-type">topic</span></dt>
+        <dd>Can be used to contain statement(s) to be executed</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>msg <span class="property-type">results</span></dt>
+        <dd>Contains output from connect</dd>
+        <dt>msg <span class="property-type">error</span></dt>
+        <dd>Contains error message if there is a problem</dd>
+    </dl>
+</script>

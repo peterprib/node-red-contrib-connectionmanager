@@ -1,0 +1,39 @@
+<script type="text/x-red" data-help-name="Release Connections">
+    <p>Get a connection for the message to be used in following nodes</p>
+    <p>On successfully getting connection message sent OK out otherwise send to failed connector</p>
+</script>
+
+<script type="text/x-red" data-template-name="Release Connections">
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('Release Connections',{
+    	category: 'Connection Manager',
+        defaults: {
+            name: {value:"",required:false}
+        },
+	    inputs:1,
+        inputLabels: "",
+        outputs:2,
+        outputLabels: ["ok","failed"],
+        icon: "iconfinder_disconnect_35973.png",
+        label: function() {
+            return this.name||this._("Release Connections");
+        },
+        labelStyle: function() {
+            return "node_label_italic";
+        },
+        oneditprepare: function() {
+        },
+        oneditsave: function() {
+        },
+        oneditresize: function(size) {
+        }
+    });
+</script>
