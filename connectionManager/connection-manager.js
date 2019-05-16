@@ -1,61 +1,62 @@
-var debug=true;
-function connectionProcessor(msg,action,done,error,statement) {
-    msg.cm.running++;
-	var c,results={},errors;
-	for(var n in msg.cm.connection) {
-	    msg.cm.running++;
-		c=msg.cm.connection[n];
-		c.pool[action].apply(c.pool,[c,
-			function(result) {
-				results[n]=result;
-				if(--msg.cm.running==0) {
-					if(errors && error) {
-						error.apply(this,[results,errors]);
-					} else {
-						done.apply(this,[results,errors]);
-					}
-				}
-			},
-			function(e) {
-				if(errors==null) errors={};
-				try{	
-					c.pool.node.error("connection "+ n +" "+e);
-					errors[n]=e;
-				} catch(e2) {
-					console.log("connectionProcessor catch error: "+e2);
-				}
-				if(--msg.cm.running==0) {
-					if(errors && error) {
-						error.apply(this,[results,errors]);
-					} else {
-						done.apply(this,[results,errors]);
-					}
-				}
-			},
-			statement,
-			msg.cm.params||msg.payload
-		]);
-	}
+var debug=false;
+function connectionProcessorComplete(msg,done,error,results,errors) {
+	if(debug) console.log("connectionProcessorComplete "+msg.cm.running);
 	if(--msg.cm.running==0) {
 		if(errors && error) {
+			if(debug) console.log("connectionProcessorComplete  errors "+JSON.stringify(errors));
 			error.apply(this,[results,errors]);
 		} else {
 			done.apply(this,[results,errors]);
 		}
 	}
 }
-function cmProcessor(msg,action,done,error) {
+function connectionProcessor(msg,action,done,error,statement,params) {
+	if(debug) console.log("connectionProcessor ");
+    msg.cm.running++;
+	var c,results={},errors;
+	for(var n in msg.cm.connection) {
+		if(debug) console.log("connectionProcessor connection: "+n);
+	    msg.cm.running++;
+		c=msg.cm.connection[n];
+		c.pool[action].apply(c.pool,[c,
+			function(result) {
+				results[n]=result;
+				connectionProcessorComplete(msg,done,error,results,errors);
+			},
+			function(err) {
+				if(debug) console.log("connectionProcessor connection: "+n+" error: "+err);
+				if(errors==null) errors={};
+				try{	
+					c.pool.node.error("connection "+ n +" "+err);
+					errors[n]=String(err);
+				} catch(e) {
+					console.log("connectionProcessor catch error: "+String(e));
+				}
+				connectionProcessorComplete(msg,done,error,results,errors);
+			},
+			statement,
+			params
+		]);
+	}
+	connectionProcessorComplete(msg,done,error,results,errors);
+	if(debug) console.log("connectionProcessor end running "+msg.cm.running);
+}
+function cmProcessor(msg,action,done,error,statement,params) {
     if(!msg.cm) {done(); return;}
     var thisObject=this;
 	stackProcessor.apply(this,[msg,action,
 		function(){
-			connectionProcessor.apply(thisObject,[msg,action,done,error]);
+			connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params]);
 		},
 		error
 	]);
 }
-function query(msg,connection,statement,done,error) {
+function query(msg,connection,statement,params,done,error) {
 	if(debug) console.log("query connection: "+connection+" statement: "+statement);
+	if(!statement || statement.trim()=="") {
+		error("empty query");
+		return;
+	}
 	if(connection) {
 		if(connection in msg.cm.connection) {
 			var connector=msg.cm.connection[connection];
@@ -64,16 +65,19 @@ function query(msg,connection,statement,done,error) {
 			return;
 		}
 		connector.pool.query(connector,   //c,sql,params,done,error
-			function (result) {done(result);},
-			function(err) {error(err);},
+			done,
+			(err)=>{
+				if(debug) console.log("query error "+err);
+				error(String(err));
+			},
 			node.statement,
-			msg.cm.params||msg.payload
+			params
 		);
 		return;
 	}		
 	if(debug) console.log("query connection all connections");
 	
-	connectionProcessor.apply(this,[msg,"query",done,error,statement]);
+	connectionProcessor.apply(this,[msg,"query",done,error,statement,params]);
 }
 
 function commit(msg,done,error) {
@@ -162,15 +166,20 @@ ConnectionPool.prototype.rollback=function(c,done,error) {
 ConnectionPool.prototype.query=function(c,done,error,sql,params) {   
 	if(debug) console.log("ConnectionPool query connection id: "+c.id+" sql: "+sql+" parms: "+JSON.stringify(params));
 	this.lastUsed[c.id]=new Date();
-	this.driver.query(c.connection,sql,params,done,error);
+	this.driver.query(c.connection,sql,params,done,
+			(err)=>{
+				if(debug) console.log("ConnectionPool query "+err);
+				error(err)
+			}
+			);
 };
 ConnectionPool.prototype.getDetails=function() {
 	return {connected:this.pool.length,active:this.active.length,free:this.free.length,lastError:this.lastError||'',autoCommit:this.autoCommit};
 }
-ConnectionPool.prototype.error=function(error,callback) {
-	this.node.error(error);
-	this.lastError=error;
-	callback(error);
+ConnectionPool.prototype.error=function(err,callback) {
+	this.node.error(err);
+	this.lastError=err;
+	callback(err);
 }
 ConnectionPool.prototype.getConnection=function(done,error) {
 	if(debug) console.log("ConnectionPool getConnection");
@@ -209,7 +218,7 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 			connectionPool.active.push(c);
 			done( {id:c, pool:connectionPool, connection:connection});
 		},
-		function(e){connectionPool.node.error(e); error(e);}
+		function(err){connectionPool.node.error(err); error(err);}
 	);
 }
 ConnectionPool.prototype.connection=function(c) {
@@ -230,7 +239,7 @@ ConnectionPool.prototype.releaseStaleConnections=function() {
 	var staleTimestamp= new Date(Date.now() - (1 * 60 * 1000));
 	for(var i in this.active) {
 		if(this.lastUsed[i] < staleTimestamp) {
-			this.node.Error("Releasing long running connection "+i);
+			this.node.error("Releasing long running connection "+i);
 			this.release(i,function() {});
 		}
 	}
@@ -248,10 +257,11 @@ module.exports = function(RED) {
         }
         node.setMsg= function(msg,done,error) {
         	if(!msg.cm) {
-        		msg.cm={running:0,connection:{},stack:[]
+        		var cm={running:0,connection:{},stack:[]
         			,commit:commit,rollback:rollback,release:release
         			,query:query
         			};
+            	RED.util.setMessageProperty(msg,"cm",cm);
         	}
         	node.connectionPool.getConnection(
         		function (connection) {
@@ -303,8 +313,8 @@ Driver.prototype.commit=function(conn,done,error) {
 	if(debug) console.log("Driver.commit");
 	this.query(conn,"commit",null,
 		done,
-		function(e) {
-			error(e);
+		function(err) {
+			error(err);
 		}
 	);
 };
@@ -381,15 +391,6 @@ Driver.prototype.getConnectionQ=function(node,done,error) {
 };
 Driver.prototype.queryQ=function(conn,sql,params,done,error) {
 	if(debug) console.log("Driver.queryQ "+JSON.stringify({sql:sql,params:params}));
-	if(!sql || sql.trim()=="") {
-		if(error) {
-			error("empty query");
-		} else {
-			console.log("Driver, no error defaulting to done, error: empty query");
-			done([{sql:sql,error:"empty query"}]);
-		}
-		return;
-	}
 	var thisObject=this;
 	try{
 		conn.query(sql,params).then(function(result){
@@ -397,57 +398,28 @@ Driver.prototype.queryQ=function(conn,sql,params,done,error) {
 			done(result);
 		}).fail(function(err){
 			if(debug) console.log("Driver.queryQ error: "+err);
-			if(error) {
-				error(err);
-				return;
-			}
-			console.log("Driver, no error defaulting to done, error: "+e);
-			done([{sql:sql,error:err}]);
+			error(err);
 		});
 	} catch(e) {
-		if(debug) console.log("Driver.queryQ error: "+err);
-		if(error) {
-			error(err);
-			return;
-		}
-		console.log("Driver, no error defaulting to done, error: "+e);
-		done([{sql:sql,error:err}]);
+		if(debug) console.log("Driver.queryQ error: "+e);
+		error(e);
 	}
 },
 Driver.prototype.queryC=function(conn,sql,params,done,error) {
 	if(debug) console.log("Driver.queryC "+JSON.stringify({sql:sql,params:params}));
-	if(!sql || sql.trim()=="") {
-		if(error) {
-			error("empty query");
-		} else {
-			console.log("Driver, no error defaulting to done, error: empty query");
-			done([{sql:sql,error:"empty query"}]);
-		}
-		return;
-	}
 	var thisObject=this;
 	try{
 		conn.query(sql,params,(err, result) => {
 			if(err) {
-				if(debug) console.log("Driver.querycC error: "+err);
-				if(error) {
-					error(err);
-					return;
-				}
-				console.log("Driver, no error defaulting to done, error: "+e);
-				done([{sql:sql,error:err}]);
+				if(debug) console.log("Driver.queryC error: "+err);
+				error(err);
 			} else {
 				if(debug) console.log("Driver.queryC first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
 				done(result);
 			}
 		});
 	} catch(e) {
-		if(error) {
-			error(err);
-			return;
-		}
-		console.log("Driver, no error defaulting to done, error: "+e);
-		done([{sql:sql,error:err}]);
+		error(e);
 	}
 },
 Driver.prototype.close=function(conn,done,error) {

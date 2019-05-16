@@ -21,6 +21,15 @@
         </select>
     </div>
 
+    <div class="form-row">
+        <label for="node-input-param"><i class="fa fa-list-ul"></i> Parameter Array</label>
+        <select id="node-input-param">
+            <option value="node">None</option>
+            <option value="msg.param">msg.param</option>
+            <option value="msg.payload">msg.payload</option>
+        </select>
+    </div>
+
     <div class="form-row" style="margin-bottom: 0px;">
         <label for="" style="width: unset;" id="node-input-statementlabel"><i class="fa fa-edit"></i> Statement</label>
     </div>
@@ -41,6 +50,7 @@
         defaults: {
             name: {value:"",required:false},
             connection: {required:false},
+            param: {value:"none",required:true},
             statement: {value:"",required:true},
             onErrorAction: {value:"terminate",required:true}
         },
@@ -104,8 +114,8 @@
     <dl class="message-properties">
         <dt>msg <span class="property-type">payload</span></dt>
         <dd>incoming message with payload</dd>
-        <dt>msg <span class="property-type">topic</span></dt>
-        <dd>Can be used to contain statement(s) to be executed</dd>
+        <dt>msg.param <span class="property-type">param</span></dt>
+        <dd>Can be used to contain parameters to be used against statement</dd>
     </dl>
     <h3>Outputs</h3>
     <dl class="message-properties">

@@ -29,7 +29,7 @@ module.exports = function(RED) {
        		]);
         };
         node.only=function(msg) {
-        	node.send([null,msg]);
+	     	node.send([null,msg]);
         };
         node.ignore=function(msg) {
         	node.send([msg]);
@@ -42,14 +42,26 @@ module.exports = function(RED) {
        			node.send([null,msg]);
        			return;
        		}
-       		msg.cm.query.apply(node,[msg,node.connection,node.statement,
+       		switch (node.param) {
+       			case 'msg.payload':
+       				var param=msg.payload;
+       				break;
+       			case 'msg.param':
+       				var param=msg.param;
+       				break;
+       			case 'none': 
+       			default:
+       				var param=[];
+       				break;
+       		}
+       		msg.cm.query.apply(node,[msg,node.connection,node.statement,param,
 				function (result) {
 			       	RED.util.setMessageProperty(msg,"result",result);
 					node.send([msg]);
 				},
-       			function(e) {
-	 				node.warn("Errors "+e+" "+node.onErrorAction);
-		        	RED.util.setMessageProperty(msg,"error",e);
+       			function(result,err) {
+	 				node.warn("Errors " +node.onErrorAction+" "+JSON.stringify(err));
+		        	RED.util.setMessageProperty(msg,"error",err);
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 				}
        		]);
