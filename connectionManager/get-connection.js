@@ -28,6 +28,7 @@ module.exports = function(RED) {
     				node.send(msg);
     				if(failedLastTime) {
     		       		node.status({ fill: 'green', shape: 'ring', text: "Connection to "+ connectionName(node) });
+    		       		var failedLastTime=false;
     				}
         		},
         		function(e) {
@@ -35,6 +36,7 @@ module.exports = function(RED) {
         			node.error("get connection failed: "+e);
         			msg.error=e;
         			node.send([null,msg]);
+		       		var failedLastTime=true;
         		}
         	]);
         });

@@ -10,13 +10,22 @@
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
 
+    <div class="form-row">
+        <label for="node-input-rollback"><i class="fa fa-list-ul"></i> Rollback</label>
+        <select id="node-input-rollback">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+        </select>
+    </div>
+
 </script>
 
 <script type="text/javascript">
     RED.nodes.registerType('Release Connections',{
     	category: 'Connection Manager',
         defaults: {
-            name: {value:"",required:false}
+            name: {value:"",required:false},
+            rollback: {value:"no",required:true}
         },
 	    inputs:1,
         inputLabels: "",

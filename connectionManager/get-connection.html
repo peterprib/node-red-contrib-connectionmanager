@@ -9,10 +9,19 @@
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
+
     <div class="form-row">
     	<label for="node-input-connection"><i class="fa fa-list-ul"></i> Connection</label>
     	<input type="text" id="node-input-connection">
   	</div>
+  	
+    <div class="form-row">
+        <label for="node-input-autoCommit"><i class="fa fa-list-ul"></i> Auto Commit</label>
+        <select id="node-input-autoCommit">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+        </select>
+    </div>
 
 </script>
 
@@ -21,7 +30,8 @@
     	category: 'Connection Manager',
         defaults: {
             name: {value:"",required:false},
-            connection: {type:"Connection Manager"}
+            connection: {type:"Connection Manager"},
+            autoCommit: {value:"yes",required:true}
         },
 	    inputs:1,
         inputLabels: "",

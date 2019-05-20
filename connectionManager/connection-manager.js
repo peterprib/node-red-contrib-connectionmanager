@@ -1,4 +1,4 @@
-var debug=false;
+var debug=true;
 function connectionProcessorComplete(msg,done,error,results,errors) {
 	if(debug) console.log("connectionProcessorComplete "+msg.cm.running);
 	if(--msg.cm.running==0) {
@@ -137,6 +137,10 @@ function ConnectionPool(node) {
 	this.lastUsed=[];
 	this.newConnections=0;
 }
+ConnectionPool.prototype.beginTransaction=function(c,done,error) {
+	if(debug) console.log("ConnectionPool beginTransaction");
+	this.driver.beginTransaction(c.connection,done,error);
+}
 ConnectionPool.prototype.close=function(c,done,error) {
 	if(this.active.indexOf(c)>-1) {
 		this.node.error("rolling back active connection as close issued");
@@ -149,32 +153,22 @@ ConnectionPool.prototype.close=function(c,done,error) {
 		this.driver.close(c,done,error);
 	}
 };
-ConnectionPool.prototype.release=function(c,done) {
-	this.returnConnection(c.id);
-	done();
-};
-ConnectionPool.prototype.returnConnection=function(c) {
-	this.active.splice(this.active.indexOf(c),1);
-	this.free.push(c);
-};
 ConnectionPool.prototype.commit=function(c,done,error) {
 	this.driver.commit(c.connection,done,error);
 };
-ConnectionPool.prototype.rollback=function(c,done,error) {
-	this.driver.rollback(c.connection,done,error);
-} 
-ConnectionPool.prototype.query=function(c,done,error,sql,params) {   
-	if(debug) console.log("ConnectionPool query connection id: "+c.id+" sql: "+sql+" parms: "+JSON.stringify(params));
-	this.lastUsed[c.id]=new Date();
-	this.driver.query(c.connection,sql,params,done,
-			(err)=>{
-				if(debug) console.log("ConnectionPool query "+err);
-				error(err)
-			}
-			);
-};
-ConnectionPool.prototype.getDetails=function() {
-	return {connected:this.pool.length,active:this.active.length,free:this.free.length,lastError:this.lastError||'',autoCommit:this.autoCommit};
+ConnectionPool.prototype.closeAll=function(done) {
+	this.node.log("closing all connections");
+	var running=1;
+	for(var c in this.pool) {
+		running++;
+		this.pool[n].close.apply(this.pool,[c,
+			function(){if(--running) done();}
+		]);
+	}
+	if(--running==0) done();
+}
+ConnectionPool.prototype.connection=function(c) {
+	this.pool[c];
 }
 ConnectionPool.prototype.error=function(err,callback) {
 	this.node.error(err);
@@ -209,7 +203,6 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 		connectionPool.error("maximum pool size "+this.size,error);
 		return;
 	}
-	
 	this.driver.getConnection(this.node,
 		function (connection) {
 			connectionPool.node.log("new connection "+connectionPool.node.name);
@@ -221,27 +214,49 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 		function(err){connectionPool.node.error(err); error(err);}
 	);
 }
-ConnectionPool.prototype.connection=function(c) {
-	this.pool[c];
+ConnectionPool.prototype.getDetails=function() {
+	return {connected:this.pool.length,active:this.active.length,free:this.free.length,lastError:this.lastError||'',autoCommit:this.autoCommit};
 }
-ConnectionPool.prototype.closeAll=function(done) {
-	this.node.log("closing all connections");
-	var running=1;
-	for(var c in this.pool) {
-		running++;
-		this.pool[n].close.apply(this.pool,[c,
-			function(){if(--running) done();}
-		]);
-	}
-	if(--running==0) done();
-}
+ConnectionPool.prototype.query=function(c,done,error,sql,params) {   
+	if(debug) console.log("ConnectionPool query connection id: "+c.id+" sql: "+sql+" parms: "+JSON.stringify(params));
+	this.lastUsed[c.id]=new Date();
+	this.driver.query(c.connection,sql,params,done,
+			(err)=>{
+				if(debug) console.log("ConnectionPool query "+err);
+				error(err)
+			}
+			);
+};
+ConnectionPool.prototype.release=function(c,done) {
+	if(debug) console.log("ConnectionPool.release "+c.id);
+	this.returnConnection(c.id);
+	done();
+};
+ConnectionPool.prototype.returnConnection=function(c) {
+	this.active.splice(this.active.indexOf(c),1);
+	this.free.push(c);
+};
+ConnectionPool.prototype.rollback=function(c,done,error) {
+	if(debug) console.log("ConnectionPool.rollback ");
+	this.driver.rollback(c.connection,done,error);
+} 
+
 ConnectionPool.prototype.releaseStaleConnections=function() {
-	var staleTimestamp= new Date(Date.now() - (1 * 60 * 1000));
-	for(var i in this.active) {
-		if(this.lastUsed[i] < staleTimestamp) {
-			this.node.error("Releasing long running connection "+i);
-			this.release(i,function() {});
+	try{
+		var thisObject=this,
+			staleTimestamp= new Date(Date.now() - (1 * 60 * 1000));
+		for(var i in this.active) {
+			if(this.lastUsed[i] < staleTimestamp) {
+				this.node.error("Releasing long running connection with rollback "+i);
+				this.driver.rollback.apply(this.driver,[
+					thisObject.pool[i],
+					()=>thisObject.release.apply(thisObject,[i,()=>{thisObject.node.log("Released connection with rollback "+i);}]),
+					(err)=>thisObject.release.apply(thisObject,[i,()=>{thisObject.node.warn("Releasing connection "+i+" rollback failed: "+err);}])
+					]);
+			}
 		}
+	} catch(e) {
+		console.error("releaseStaleConnections failed: "+e)
 	}
 }
 module.exports = function(RED) {
@@ -263,14 +278,19 @@ module.exports = function(RED) {
         			};
             	RED.util.setMessageProperty(msg,"cm",cm);
         	}
-        	node.connectionPool.getConnection(
+        	cm.autoCommit=(node.autoCommit=="yes");
+        	node.connectionPool.getConnection(	//getConnectionTransactional
         		function (connection) {
                     msg.cm.connection[node.name]=connection;
         			if(msg.cm.autoCommit==null){
         				msg.cm.autoCommit=connection.pool.autoCommit;
         			} else {
         				if(msg.cm.autoCommit!==connection.pool.autoCommit) {
-        					error("mixed mode on autocommit between connections");
+        					node.connectionPool.beginTransaction(connection,done,(err)=>{
+        						error("error with begin transaction "+err);
+        						node.connectionPool.release(connection,()=>{},()=>{});
+        					});
+//        					error("mixed mode on autocommit between connections, message has "+msg.cm.autoCommit+" connection pool "+connection.pool.autoCommit);
         					return;
         				}
         			}
@@ -308,19 +328,23 @@ function Driver(a) {
 	this.getConnection=this.q?this.getConnectionQ:this.getConnectionC;
 	this.query=this.q?this.queryQ:this.queryC;
 }
-
+Driver.prototype.beginTransaction=function(conn,done,error) {
+	if(debug) console.log("Driver.beginTransaction");
+	this.query(conn,"Start Transaction",null,done,error);
+};
+Driver.prototype.close=function(conn,done,error) {
+	if(debug) console.log("close");
+	conn.close().then(done).fail(function(err, result) {
+		if(error) {
+			error(err);
+			return;
+		}
+		done([{sql:sql,error:err}]);
+	});
+};
 Driver.prototype.commit=function(conn,done,error) {
 	if(debug) console.log("Driver.commit");
-	this.query(conn,"commit",null,
-		done,
-		function(err) {
-			error(err);
-		}
-	);
-};
-Driver.prototype.rollback=function(conn,done,error) {
-	if(debug) console.log("Driver.rollback");
-	this.query(conn,"rollback",null,done,error);
+	this.query(conn,"commit",null,done,error);
 };
 Driver.prototype.getOptions=function(node) {
 	if(debug) console.log("Driver.getOptions "+JSON.stringify(this.optionsMapping));
@@ -422,16 +446,10 @@ Driver.prototype.queryC=function(conn,sql,params,done,error) {
 		error(e);
 	}
 },
-Driver.prototype.close=function(conn,done,error) {
-	if(debug) console.log("close");
-	conn.close().then(done).fail(function(err, result) {
-		if(error) {
-			error(err);
-			return;
-		}
-		done([{sql:sql,error:err}]);
-	});
-}
+Driver.prototype.rollback=function(conn,done,error) {
+	if(debug) console.log("Driver.rollback");
+	this.query(conn,"rollback",null,done,error);
+};
 var DriverType = {
 		'monetdb': new Driver({
 			Driver:require('monetdb')({maxReconnects:0,debug:false}),
