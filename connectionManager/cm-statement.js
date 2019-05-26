@@ -1,8 +1,10 @@
+
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
     	this.log("Copyright 2019 Jaroslav Peter Prib");
     	var node=Object.assign(this,n);
+    	node.prepareSQL=(node.preapare=="yes");
         node.terminate=function(msg) {
         	node.error("Message terminated due to an error", msg);
         	if(msg.cm) {
@@ -23,7 +25,7 @@ module.exports = function(RED) {
 		        	node.send([null,msg]);
        			},         
        			function(e) { 					//error
-       				node.error("rollback error"+e);
+       				node.error("rollback error "+e);
        				node.send([null,msg]);
        			}   
        		]);
@@ -56,12 +58,12 @@ module.exports = function(RED) {
        		}
        		msg.cm.query.apply(node,[msg,node.connection,node.statement,param,
 				function (result) {
-			       	RED.util.setMessageProperty(msg,"result",result);
+					msg.result=result;
 					node.send([msg]);
 				},
        			function(result,err) {
-	 				node.warn("Errors " +node.onErrorAction+" "+JSON.stringify(err));
-		        	RED.util.setMessageProperty(msg,"error",err);
+					msg.result=result
+					msg.error=err;
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 				}
        		]);

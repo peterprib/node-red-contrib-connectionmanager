@@ -12,9 +12,22 @@ module.exports = function(RED) {
     function GetConnectionNode(n) {
         RED.nodes.createNode(this,n);
         var node=Object.assign(this,n);
+
+        node.connectionNode=RED.nodes.getNode(node.connection);
+        if(!node.connectionNode) {
+			node.warn("Connection not found "+node.connection+" , try again on nodes-started");
+       		node.status({ fill: 'red', shape: 'ring', text: "Connection not found" });
+       		return;
+        } else {
+       		node.status({ fill: 'green', shape: 'ring', text: "Connection to "+ connectionName(node) });
+        }
+        
         RED.events.on("nodes-started",function() {
+        	 if(node.connectionNode) {
+        		 return;
+        	 }
             node.connectionNode=RED.nodes.getNode(node.connection);
-            if (!node.connectionNode) {
+            if(!node.connectionNode) {
     			node.error("Connection not found "+node.connection);
            		node.status({ fill: 'red', shape: 'ring', text: "Connection not found" });
            		return;

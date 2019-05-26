@@ -30,6 +30,14 @@
         </select>
     </div>
 
+    <div class="form-row">
+        <label for="node-input-prepare"><i class="fa fa-list-ul"></i> Prepare and Execute</label>
+        <select id="node-input-prepare">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+        </select>
+    </div>
+
     <div class="form-row" style="margin-bottom: 0px;">
         <label for="" style="width: unset;" id="node-input-statementlabel"><i class="fa fa-edit"></i> Statement</label>
     </div>
@@ -52,6 +60,7 @@
             connection: {required:false},
             param: {value:"none",required:true},
             statement: {value:"",required:true},
+            prepare: {value:"no",required:true},
             onErrorAction: {value:"terminate",required:true}
         },
         inputs:1,
@@ -109,7 +118,7 @@
 </script>
 
 <script type="text/x-red" data-help-name="cm-statement">
-    <p>Execute Statement </p>
+    <p>Execute Statement. Can select prepare and exec.  If multiple calls with UOW improves performance.</p>
     <h3>Inputs</h3>
     <dl class="message-properties">
         <dt>msg <span class="property-type">payload</span></dt>
