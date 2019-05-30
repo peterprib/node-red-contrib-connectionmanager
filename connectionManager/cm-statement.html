@@ -96,6 +96,27 @@
                     clearInterval: true
                 }
             });
+            
+            $("#node-input-statementlabel").click(function(e) {
+                e.preventDefault();
+                var value = ace.editor.getValue();
+                RED.editor.editJavaScript({
+                    value: value,
+                    width: "Infinity",
+                    cursor: ace.editor.getCursorPosition(),
+                    mode: "ace/mode/sql",
+                    complete: function(v,cursor) {
+                        ace.editor.setValue(v, -1);
+                        ace.editor.gotoLine(cursor.row+1,cursor.column,false);
+                        setTimeout(function() {
+                            ace.editor.focus();
+                        },300);
+                    }
+                })
+            })
+            
+            
+            
         },
         oneditsave: function() {
             $("#node-input-statement").val(this.editor.getValue());

@@ -7,11 +7,11 @@ module.exports = function(RED) {
         node.on('input', function (msg) {
         	if(msg.cm) {
         		msg.cm.release.apply(node,[msg,
-        	    	(results)=>node.send([msg]),
+        	    	()=>node.send([msg]),
         	    	(results,errors)=>{
-        	           	node.error(errors);
-        	           	msg.error=errors;
-        	    		node.send([null,msg]);
+        	           	msg.error=errors||"no error message returned";
+        	           	node.error(msg.error);
+        	           	node.error(results);
         	    	}
         	    ]);
         	} else {

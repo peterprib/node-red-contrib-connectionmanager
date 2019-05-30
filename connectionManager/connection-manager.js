@@ -1,12 +1,12 @@
-var debug=false;
+var debug=true;
 function connectionProcessorComplete(msg,done,error,results,errors) {
 	if(debug) console.log("connectionProcessorComplete "+msg.cm.running);
 	if(--msg.cm.running==0) {
-		if(errors && error) {
-			if(debug) console.log("connectionProcessorComplete  errors "+JSON.stringify(errors));
+		if(errors) {
+			if(debug) console.log("connectionProcessorComplete errors "+JSON.stringify(errors));
 			error.apply(this,[results,errors]);
 		} else {
-			done.apply(this,[results,errors]);
+			done.apply(this,[results]);
 		}
 	}
 }
@@ -19,11 +19,11 @@ function connectionProcessor(msg,action,done,error,statement,params) {
 	    msg.cm.running++;
 		c=msg.cm.connection[n];
 		c.pool[action].apply(c.pool,[c,
-			function(result) {
+			(result)=>{
 				results[n]=result;
 				connectionProcessorComplete(msg,done,error,results,errors);
 			},
-			function(err) {
+			(err)=>{
 				if(debug) console.log("connectionProcessor connection: "+n+" error: "+err);
 				if(errors==null) errors={};
 				try{	
@@ -41,13 +41,12 @@ function connectionProcessor(msg,action,done,error,statement,params) {
 	connectionProcessorComplete(msg,done,error,results,errors);
 }
 function cmProcessor(msg,action,done,error,statement,params) {
+	if(debug) console.log("cmProcessor action: "+action);
     if(!msg.cm) {done(); return;}
     var thisObject=this;
 	stackProcessor.apply(this,[msg,action,
-		function(){
-			connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params]);
-		},
-		error
+		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params]),
+		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params])
 	]);
 }
 function query(msg,connection,statement,params,done,error) {
@@ -98,7 +97,7 @@ function commit(msg,done,error) {
 function rollback(msg,done,error) {
 	cmProcessor.apply(this,[msg,"rollback",done,error]);
 }
-function release(msg,done,error,rollback) {
+function release(msg,done,error) {
 	if(debug) console.log("release");
 	if(msg.cm.autoCommit) {
 		cmProcessor.apply(this,[msg,"release",done,error]);
@@ -114,15 +113,14 @@ function release(msg,done,error,rollback) {
 		(err)=> {
 			if(debug) console.log("release "+action+" all with error now releasing "+JSON.stringify(err));
 			cmProcessor.apply(thisObject,[msg,"release",
-				error,
-				(e1)=>{
-					error(e+" and "+e1);
-				}
+				()=>error(result,e),
+				(result,e1)=>error(result,e+" and "+e1)
 			]);
 		},
 	]);
 }
 function stackProcessor(msg,action,done,error) {
+	if(debug) console.log("stackProcessor action: "+action);
 	if(msg.cm.stack.length==0) {
 		if(msg.cm.running==0) done();
 		return;
