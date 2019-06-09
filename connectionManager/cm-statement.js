@@ -4,7 +4,7 @@ module.exports = function(RED) {
         RED.nodes.createNode(this,n);
     	this.log("Copyright 2019 Jaroslav Peter Prib");
     	var node=Object.assign(this,n);
-    	node.prepareSQL=(node.preapare=="yes");
+    	node.prepareSQL=(node.prepare=="yes");
         node.terminate=function(msg) {
         	node.error("Message terminated due to an error", msg);
         	if(msg.cm) {
@@ -62,7 +62,7 @@ module.exports = function(RED) {
 					node.send([msg]);
 				},
        			function(result,err) {
-					msg.result=result
+					msg.result=result;
 					msg.error=err;
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 				}

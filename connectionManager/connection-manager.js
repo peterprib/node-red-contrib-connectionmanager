@@ -10,8 +10,8 @@ function connectionProcessorComplete(msg,done,error,results,errors) {
 		}
 	}
 }
-function connectionProcessor(msg,action,done,error,statement,params) {
-	if(debug) console.log("connectionProcessor ");
+function connectionProcessor(msg,action,done,error,a1,a2) {
+	if(debug) console.log("connectionProcessor action: "+action+" arguments "+JSON.stringify({a1:a1,a2:a2}));
     msg.cm.running++;
 	var c,results={},errors;
 	for(var n in msg.cm.connection) {
@@ -27,68 +27,82 @@ function connectionProcessor(msg,action,done,error,statement,params) {
 				if(debug) console.log("connectionProcessor connection: "+n+" error: "+err);
 				if(errors==null) errors={};
 				try{	
-//					c.pool.node.error("connection "+ n +" "+err);
-					errors[n]=String(err);
+					errors[n]=err;
 				} catch(e) {
-					console.log("connectionProcessor catch error: "+String(e));
+					console.error("connectionProcessor catch error: "+JSON.stringify(e));
 				}
 				connectionProcessorComplete(msg,done,error,results,errors);
 			},
-			statement,
-			params
+			a1,
+			a2
 		]);
 	}
 	connectionProcessorComplete(msg,done,error,results,errors);
 }
-function cmProcessor(msg,action,done,error,statement,params) {
+function cmProcessor(msg,action,done,error,a1,a2) {
 	if(debug) console.log("cmProcessor action: "+action);
     if(!msg.cm) {done(); return;}
     var thisObject=this;
 	stackProcessor.apply(this,[msg,action,
-		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params]),
-		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,statement,params])
+		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,a1,a2]),
+		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,a1,a2])
 	]);
 }
 function query(msg,connection,statement,params,done,error) {
-	if(debug) console.log("query connection: "+connection+" statement: "+statement);
+	if(debug) console.log("query connection: "+connection+" prepare: "+this.prepareSQL+" statement: "+statement);
 	if(!statement || statement.trim()=="") {
-		error("empty query");
+		error({},"empty query");
 		return;
 	}
 	if(connection) {
 		if(connection in msg.cm.connection) {
 			var connector=msg.cm.connection[connection];
 		} else {
-			error("connection "+connection+" not established by previous node");
+			error({},"connection "+connection+" not established by previous node");
 			return;
 		}
-		if(this.preparedSQL) {
+		if(this.prepareSQL) {
+			var node=this;
 			connector.pool.prepare(connector, 
-					(prepared)=>{
-						connector.pool.exec(prepared,done,error,params); 
-					},
-					(err)=>{
-						if(debug) console.log("query prepare error "+err);
-						error(String(err));
-					},
-					node.statement,
-					node.id
-				);
+				(prepared)=>connector.pool.exec(prepared,done,error,params),
+				(err)=>{
+					if(debug) console.log("query prepare error "+err);
+					error({},err);
+				},
+				statement,
+				node.id
+			);
 			return;
 		}
 		connector.pool.query(connector,   //c,sql,params,done,error
 			done,
 			(err)=>{
-				if(debug) console.log("query error "+err);
-				error(String(err));
+				if(debug) console.log("query error "+JSON.stringify(err));
+				error({},err);
 			},
-			node.statement,
+			statement,
 			params
 		);
 		return;
 	}		
 	if(debug) console.log("query connection all connections");
-	connectionProcessor.apply(this,[msg,"query",done,error,statement,params]);
+	if(this.prepareSQL) {
+		var node=this;
+		connectionProcessor.apply(node,[msg,"prepare",
+			(prepared)=>{
+				if(debug) console.log("query prepare exec node: "+node.id+" params: "+JSON.stringify(params));
+				connectionProcessor.apply(node,[msg,"exec",done,error,node.id,params]);
+			},
+			(result,err)=>{
+				if(debug) console.log("query prepare error(s) "+JSON.stringify(err));
+				error(result,err);
+			},
+			statement,
+			node.id
+		]);
+	} else {
+		connectionProcessor.apply(this,[msg,"query",done,error,statement,params]);
+	}
 }
 
 function commit(msg,done,error) {
@@ -113,8 +127,8 @@ function release(msg,done,error) {
 		(err)=> {
 			if(debug) console.log("release "+action+" all with error now releasing "+JSON.stringify(err));
 			cmProcessor.apply(thisObject,[msg,"release",
-				()=>error(result,e),
-				(result,e1)=>error(result,e+" and "+e1)
+				(result)=>error(result,err),
+				(result,e1)=>error(result,err+" and "+e1)
 			]);
 		},
 	]);
@@ -126,7 +140,7 @@ function stackProcessor(msg,action,done,error) {
 		return;
 	}
 	var r=msg.cm.stack.pop();
-	if(!(action in r)) {
+	if(!r.hasOwnProperty('action')) {
 		stackProcessor.apply(this,[msg,action,done,error]);
 		return;
 	}
@@ -156,6 +170,17 @@ ConnectionPool.prototype.beginTransaction=function(c,done,error) {
 	if(debug) console.log("ConnectionPool beginTransaction");
 	this.driver.beginTransaction(c.connection,done,error);
 }
+ConnectionPool.prototype.checkDeadConnection=function(c,errorMessage) {
+	if(debug) console.log("ConnectionPool.checkDeadConnection");
+	if(this.driver.errorDeadConnection) {
+		if(this.driver.errorDeadConnection.includes(errorMessage)) {
+			if(debug) console.log("ConnectionPool.isDeadConnection set connection null and releasing");
+			this.pool(c.id)=null;  // on release this deletes connection so not used again
+			this.release(c);
+		}
+	}
+};
+
 ConnectionPool.prototype.close=function(c,done,error) {
 	if(this.active.indexOf(c)>-1) {
 		this.node.error("rolling back active connection as close issued");
@@ -191,10 +216,12 @@ ConnectionPool.prototype.error=function(err,callback) {
 	callback(err);
 }
 ConnectionPool.prototype.exec=function(c,done,error,id,params) {   
-	if(debug) console.log("ConnectionPool exec connection id: "+c.id);
+	if(debug) console.log("ConnectionPool exec connection id: "+c.id+" prepared id: "+id+" params: "+JSON.stringify(params));
 	this.lastUsed[c.id]=new Date();
-	this.driver.exec(pool.prepared[id].sql ,params,done, (err)=>{
+	var pool=this;
+	this.driver.exec(this.prepared[c.id][id],params,done,(err)=>{
 		if(debug) console.log("ConnectionPool exec "+err);
+		pool.checkDeadConnection(c,err);
 		error(err)
 	});
 };
@@ -229,7 +256,14 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 	this.driver.getConnection(this.node,
 		function (connection) {
 			connectionPool.node.log("new connection "+connectionPool.node.name);
-			var c=connectionPool.pool.push(connection)-1;
+			
+			var c = connectionPool.pool.find((e)=>e==null);
+			if(c) {
+				connectionPool.pool[c]=connection;
+				connectionPool.node.log("reuse connection stale connect for "+connectionPool.node.name);
+			} else {
+				c=connectionPool.pool.push(connection)-1;
+			}
 			connectionPool.lastUsed.push(new Date());
 			connectionPool.active.push(c);
 			done( {id:c, pool:connectionPool, connection:connection});
@@ -241,16 +275,22 @@ ConnectionPool.prototype.getDetails=function() {
 	return {connected:this.pool.length,active:this.active.length,free:this.free.length,lastError:this.lastError||'',autoCommit:this.autoCommit};
 }
 ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {   
-	if(debug) console.log("ConnectionPool prepare connection id: "+c.id+" sql: "+sql+" id: "+id);
-	this.lastUsed[c.id]=new Date();
-	if(pool.prepared[c.id]) {
-		done(pool.prepared[c.id].sql);
-		return;
+	if(debug) console.log("ConnectionPool prepare connection id: "+c.id+" prepare id: "+id+" sql: "+sql);
+	if(this.prepared[c.id]) {
+		if(debug) console.log("ConnectionPool already prepared calling done");
+		if(this.prepared[c.id][id]) {
+			done(this.prepared[c.id][id]);
+			return;
+		}
+	} else {
+		this.prepared[c.id]={};
 	}
+	this.lastUsed[c.id]=new Date();
 	var pool=this;
-	this.driver.query(c.connection,sql,params,
+	this.driver.prepare(c.connection,sql,
 		(prepared)=>{
-			pool.prepared[c.id]={id:id,sql:prepared};
+			pool.prepared[c.id][id]=prepared;
+			if(debug) console.log("ConnectionPool prepared calling done");
 			done(prepared);
 		}, 
 		(err)=>{
@@ -262,9 +302,11 @@ ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 ConnectionPool.prototype.query=function(c,done,error,sql,params) {   
 	if(debug) console.log("ConnectionPool query connection id: "+c.id+" sql: "+sql+" parms: "+JSON.stringify(params));
 	this.lastUsed[c.id]=new Date();
+	var pool=this;
 	this.driver.query(c.connection,sql,params,done, (err)=>{
 		if(debug) console.log("ConnectionPool query "+err);
-		error(err)
+		pool.checkDeadConnection(c,err);
+		error(err);
 	});
 };
 ConnectionPool.prototype.release=function(c,done) {
@@ -273,7 +315,12 @@ ConnectionPool.prototype.release=function(c,done) {
 	done();
 };
 ConnectionPool.prototype.returnConnection=function(c) {
+	if(debug) console.log("ConnectionPool.returnConnection "+c);
 	this.active.splice(this.active.indexOf(c),1);
+	if(this.pool[c]==null) {
+		if(debug) console.log("ConnectionPool.returnConnection "+c+" is bad, not placed on free chain");
+		return;
+	}
 	this.free.push(c);
 };
 ConnectionPool.prototype.rollback=function(c,done,error) {
@@ -319,7 +366,7 @@ module.exports = function(RED) {
         	}
         	cm.autoCommit=(node.autoCommit=="yes");
         	node.connectionPool.getConnection(	//getConnectionTransactional
-        		function (connection) {
+        		(connection)=>{
                     msg.cm.connection[node.name]=connection;
         			if(msg.cm.autoCommit==null){
         				msg.cm.autoCommit=connection.pool.autoCommit;
@@ -329,7 +376,6 @@ module.exports = function(RED) {
         						error("error with begin transaction "+err);
         						node.connectionPool.release(connection,()=>{},()=>{});
         					});
-//        					error("mixed mode on autocommit between connections, message has "+msg.cm.autoCommit+" connection pool "+connection.pool.autoCommit);
         					return;
         				}
         			}
@@ -366,6 +412,8 @@ function Driver(a) {
 	Object.assign(this,a);
 	this.getConnection=this.q?this.getConnectionQ:this.getConnectionC;
 	this.query=this.q?this.queryQ:this.queryC;
+	this.prepare=this.q?this.prepareQ:this.prepareC;
+	this.exec=this.q?this.execQ:this.execC;
 }
 Driver.prototype.beginTransaction=function(conn,done,error) {
 	if(debug) console.log("Driver.beginTransaction");
@@ -373,7 +421,7 @@ Driver.prototype.beginTransaction=function(conn,done,error) {
 };
 Driver.prototype.close=function(conn,done,error) {
 	if(debug) console.log("close");
-	conn.close().then(done).fail(function(err, result) {
+	conn.close().then(done,(err,result)=>{
 		if(error) {
 			error(err);
 			return;
@@ -405,27 +453,23 @@ Driver.prototype.getConnectionC=function(node,done,error) {
 	try{
 		var options=this.getOptions(node);
 		if(debug) console.log("getConnectionC "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
-		if(debug) console.log("getConnectionC "+JSON.stringify(Object.assign({},options)));
 		var thisObject=this;
 		var c = new (this.Driver())(options);
-		c.connect( function(err) {
+		c.connect((err)=>{
 			if(err) {
 				if(debug) console.log("getConnection error "+err);
 				error(err);
 				return;
 			}
 			if(thisObject.testOnConnect) {
-				thisObject.query(c,thisObject.testOnConnect,null,function() {
-						done(c);
-					},
-					error
-				);
+				thisObject.query(c,thisObject.testOnConnect,null,()=>done(c),error);
 			} else {
 				done(c);
 			}
 		});
 	} catch(e) {
-		if(error) error(e);
+		console.error("Driver.getConnectionC error: "+e);
+		error(e);
 	}
 };
 Driver.prototype.getConnectionQ=function(node,done,error) {
@@ -434,37 +478,44 @@ Driver.prototype.getConnectionQ=function(node,done,error) {
 		if(debug) console.log("getConnectionQ "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
 		var c = new this.Driver(options);
 		var thisObject=this;
-		c.connect(options).then(function(){
-			if(thisObject.testOnConnect) {
-				thisObject.query(c,thisObject.testOnConnect,null,function() {
-						done(c);
-					},
-					error
-				);
-			} else {
-				done(c);
+		c.connect(options).then(
+			()=>{
+				if(thisObject.testOnConnect) {
+					thisObject.query(c,thisObject.testOnConnect,null,()=>done(c),error);
+				} else {
+					done(c);
+				}
+			},
+			(err)=>{
+				if(debug) console.log("query error "+err);
+				error(err);
 			}
-		}).fail(function(err) {
-			if(debug) console.log("query error "+err);
-			error(err);
-		});
+		);
 	} catch(e) {
-		if(error) error(e);
+		console.error("Driver.getConnectionQ error: "+e);
+		error(e);
 	}
 };
 Driver.prototype.execQ=function(preparedSql,params,done,error) {
 	if(debug) console.log("Driver.execQ "+JSON.stringify({params:params}));
 	var thisObject=this;
 	try{
-		preparedSql.exec(params).then(function(result){
-			if(debug) console.log("Driver.execQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
-			done(result);
-		}).fail(function(err){
-			if(debug) console.log("Driver.execQ fail: "+err);
-			error(err);
-		});
+		preparedSql.exec(params).then(
+			(result)=>{
+				if(debug) console.log("Driver.execQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				done(result);
+			},
+			(err)=>{
+				if(debug) console.log("Driver.execQ fail: "+err);
+				try{
+					error(err);
+				} catch(e) {
+					console.error("Driver.execQ fail error: "+e);
+				}
+			}
+		);
 	} catch(e) {
-		if(debug) console.log("Driver.execQ error: "+e);
+		console.error("Driver.execQ error: "+e);
 		error(e);
 	}
 },
@@ -472,15 +523,18 @@ Driver.prototype.prepareQ=function(conn,sql,done,error) {
 	if(debug) console.log("Driver.prepareQ "+JSON.stringify({sql:sql}));
 	var thisObject=this;
 	try{
-		conn.prepare(sql).then(function(prepResult){
-			if(debug) console.log("Driver.prepareQ prepared completed");
-			done(prepResult);
-		}).fail(function(err){
-			if(debug) console.log("Driver.prepareQ fail: "+err);
-			error(err);
-		});
+		conn.prepare(sql).then(
+			(prepResult)=>{
+				if(debug) console.log("Driver.prepareQ prepared completed");
+				done(prepResult);
+			},
+			(err)=>{
+				if(debug) console.log("Driver.prepareQ fail: "+err);
+				error(err);
+			}
+		);
 	} catch(e) {
-		if(debug) console.log("Driver.prepareQ error: "+e);
+		console.error("Driver.prepareQ error: "+e);
 		error(e);
 	}
 },
@@ -498,6 +552,7 @@ Driver.prototype.queryC=function(conn,sql,params,done,error) {
 			}
 		});
 	} catch(e) {
+		console.error("Driver.queryC error: "+e);
 		error(e);
 	}
 },
@@ -505,15 +560,22 @@ Driver.prototype.queryQ=function(conn,sql,params,done,error) {
 	if(debug) console.log("Driver.queryQ "+JSON.stringify({sql:sql,params:params}));
 	var thisObject=this;
 	try{
-		conn.query(sql,params).then(function(result){
-			if(debug) console.log("Driver.queryQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
-			done(result);
-		}).fail(function(err){
-			if(debug) console.log("Driver.queryQ fail: "+err);
-			error(err);
-		});
+		conn.query(sql,params).then(
+			(result)=>{
+				if(debug) console.log("Driver.queryQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				done(result);
+			},
+			(err)=>{
+				if(debug) console.log("Driver.queryQ fail: "+err);
+				try{
+					error(err);
+				} catch(e) {
+					console.error("Driver.queryQ fail error: "+e+" stack:\n"+e.stack);
+				}
+			}
+		);
 	} catch(e) {
-		if(debug) console.log("Driver.queryQ error: "+e);
+		console.error("Driver.queryQ error: "+e);
 		error(e);
 	}
 },
@@ -532,7 +594,11 @@ var DriverType = {
 				dbname   : "dbname", 
 				user     : "user", 
 				password : "password"
-			}
+			},
+			errorDeadConnection: [
+				"Error: Cannot accept request: connection was destroyed.",
+				"Error: Failed to connect to MonetDB server"
+			]
 		}),
 		'pg': new Driver({
 			Driver: function() {
@@ -541,31 +607,4 @@ var DriverType = {
 			autoCommit:true
 		})
 	};
-/*
- * 
- conn.prepare('SELECT * FROM mytable WHERE c < ? AND d > ?').then(function(prepResult) {
-    // execute query twice
-    prepResult.exec([10, 5]).then(function(result) {
-        // do something with the result
-    });
-    // we are done, release it (and do not wait for it, release method does not return a promise)
-    prepResult.release();
-});
 
-Driver.prototype.prepareC=function(conn,sql,done,error) {
-	if(debug) console.log("Driver.prepareC "+JSON.stringify({sql:sql}));
-	var thisObject=this;
-	try{
-		conn.prepare(sql,(err, ?) => {
-			if(err) {
-				if(debug) console.log("Driver.prepareC error: "+err);
-				error(err);
-			} else {
-				done(result);
-			}
-		});
-	} catch(e) {
-		error(e);
-	}
-},
- */
