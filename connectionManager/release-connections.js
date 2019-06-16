@@ -7,22 +7,13 @@ module.exports = function(RED) {
         node.on('input', function (msg) {
         	if(msg.cm) {
         		msg.cm.release.apply(node,[msg,
-        	    	()=>{
-        	    		if(msg.hasOwnProperty('error')) {
-        	           		node.send([null,msg]);
-        	        	} else {
-        	            	node.send([msg]);
-        	        	}
-        	    	},
+        	    	(results)=>node.send([msg]),  // as no errors  results are known 
         	    	(results,errors)=>{
         	           	msg.error=errors||"no error message returned";
-        	           	node.error(msg.error);
-        	           	node.error(results);
+        	           	node.error(JSON.stringify({error:msg.errors,results:results}));
         	           	node.send([null,msg]);
         	    	}
         	    ]);
-        	} else if(msg.hasOwnProperty('error')) {
-           		node.send([null,msg]);
         	} else {
             	node.send([msg]);
         	}

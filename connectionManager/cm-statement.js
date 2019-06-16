@@ -1,4 +1,15 @@
-
+function propertyTree(p,l=0) {
+	if(typeof p !== 'object') return;
+	if(l>5) {
+		return;
+	}
+	Object.getOwnPropertyNames(p).forEach(function (val, idx, array) {
+		if(val==='length') return;
+		if(!Number.isNaN(Number.parseInt(val))) return;
+    	console.log('-'.repeat(l)+'> '+val);
+    	propertyTree(p[val],l+1);
+ 	});
+}
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
@@ -59,11 +70,18 @@ module.exports = function(RED) {
        		msg.cm.query.apply(node,[msg,node.connection,node.statement,param,
 				function (result) {
 					msg.result=result;
+					
+					propertyTree(msg);
+					
 					node.send([msg]);
 				},
        			function(result,err) {
 					msg.result=result;
 					msg.error=err;
+
+					propertyTree(msg);
+
+
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 				}
        		]);
