@@ -1,4 +1,8 @@
-var debug=true;
+var debug=false;
+function toggleDebug() {
+	debug=!debug;
+	console.log("connection-manager toggleDebug state: " +debug);
+}
 var Pools={};
 function getPool(id) {
 	return Pools[id];
@@ -192,7 +196,6 @@ ConnectionPool.prototype.checkDeadConnection=function(c,errorMessage) {
 		}
 	}
 };
-
 ConnectionPool.prototype.close=function(c,done,error) {
 	if(this.active.indexOf(c)>-1) {
 		this.node.error("rolling back active connection as close issued");
@@ -228,7 +231,6 @@ ConnectionPool.prototype.connection=function(c) {
 	this.pool[c];
 }
 ConnectionPool.prototype.error=function(err,callback) {
-//	this.node.error(err);
 	this.lastError=err;
 	callback(err);
 }
@@ -267,7 +269,6 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 		if(debug) console.log("ConnectionPool getConnection free");
 		var c=connectionPool.free.pop();
 		connectionPool.active.push(c);
-//		done( {id:c, pool:connectionPool, connection:this.pool[c]} );
 		done( {id:c, pool:connectionPool.node.name} );
 		return;
 	}
@@ -289,7 +290,6 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 			}
 			connectionPool.lastUsed.push(new Date());
 			connectionPool.active.push(c);
-//			done( {id:c, pool:connectionPool, connection:connection});
 			done( {id:c, pool:connectionPool.node.name});
 		},
 		function(err){connectionPool.node.error(err); error(err);}
@@ -312,13 +312,13 @@ ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 	this.lastUsed[c.id]=new Date();
 	if(!this.preparable) {
 		if(debug) console.log("ConnectionPool prepare not available, simulating prepare");
-		this.prepared[c.id][id]=sql;
+		this.prepared[c.id][id]=(this.driver.translateSQL?this.driver.translateSQL(sql):sql);
 		done(sql);
 		return;
 	}
 	
 	var pool=this;
-	this.driver.prepare(this.pool[c.id],sql,
+	this.driver.prepare(this.pool[c.id],(this.driver.translateSQL?this.driver.translateSQL(sql):sql),
 		(prepared)=>{
 			pool.prepared[c.id][id]=prepared;
 			if(debug) console.log("ConnectionPool prepared calling done");
@@ -329,12 +329,11 @@ ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 			error(err)
 	});
 };
-
 ConnectionPool.prototype.query=function(c,done,error,sql,params) {   
 	if(debug) console.log("ConnectionPool query connection id: "+c.id+" sql: "+sql+" parms: "+JSON.stringify(params));
 	this.lastUsed[c.id]=new Date();
 	var pool=this;
-	this.driver.query(this.pool[c.id],sql,params,done, (err)=>{
+	this.driver.query(this.pool[c.id],(this.driver.translateSQL?this.driver.translateSQL(sql):sql),params,done, (err)=>{
 		if(debug) console.log("ConnectionPool query "+err);
 		pool.checkDeadConnection(c,err);
 		error(err);
@@ -387,6 +386,7 @@ module.exports = function(RED) {
         this.log("Copyright 2019 Jaroslav Peter Prib");
         var node=Object.assign(this,n,{port:Number(n.port)});
         node.connectionPool=new ConnectionPool(node);
+        node.toggleDebug=toggleDebug;
         Pools[node.name]=node.connectionPool;
         if (node.credentials) {
         	node.user = node.credentials.user;
@@ -619,6 +619,9 @@ Driver.prototype.rollback=function(conn,done,error) {
 	if(debug) console.log("Driver.rollback");
 	this.query(conn,"rollback",null,done,error);
 };
+Driver.prototype.translateSQL=function(sql) {
+	return sql;
+};
 var DriverType = {
 		'monetdb': new Driver({
 			Driver:require('monetdb')({maxReconnects:0,debug:false}),
@@ -641,7 +644,12 @@ var DriverType = {
 				return require('pg').Client;
 			},
 			autoCommit:true,
-			prepareIsQuery:true
+			prepareIsQuery:true,
+			translateSQL:function(sql) {
+				var r="";
+				sql.split('?').forEach((e,i)=>r+=e+"$"+(i+1));
+				return r.slice(0, -2);
+			}
 		})
 	};
 

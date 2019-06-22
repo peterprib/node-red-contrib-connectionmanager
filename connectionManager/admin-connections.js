@@ -31,6 +31,17 @@ module.exports = function(RED) {
         				}
         			});
         			break;
+				case 'toggleDebug':
+					var toggled=false;
+        			RED.nodes.eachNode(function(n) {
+        				if(toggled) return;
+        				if(n.type!=="Connection Manager") return;
+        				toggled=true;
+        				var cmNode=RED.nodes.getNode(n.id);
+        				cmNode.toggleDebug();
+        			});
+        			msg.payload="debug toggled";
+        			break;
         		case 'releasestale':
         			RED.nodes.eachNode(function(n) {
         				if(n.type!=="Connection Manager") return;

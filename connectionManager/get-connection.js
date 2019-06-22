@@ -10,9 +10,9 @@ function connectionName(node) {
 }
 module.exports = function(RED) {
     function GetConnectionNode(n) {
+    	this.log("Copyright 2019 Jaroslav Peter Prib");
         RED.nodes.createNode(this,n);
         var node=Object.assign(this,n);
-
         node.connectionNode=RED.nodes.getNode(node.connection);
         if(!node.connectionNode) {
 			node.warn("Connection not found "+node.connection+" , try again on nodes-started");

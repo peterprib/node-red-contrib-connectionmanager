@@ -20,7 +20,15 @@
             <option value="onlyWithRelease">Error Output and release connections</option>
         </select>
     </div>
-
+    
+    <div class="form-row">
+        <label for="node-input-logError"><i class="fa fa-list-ul"></i> Log Error</label>
+        <select id="node-input-logError">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+        </select>
+    </div>
+    
     <div class="form-row">
         <label for="node-input-param"><i class="fa fa-list-ul"></i> Parameter Array</label>
         <select id="node-input-param">
@@ -61,6 +69,7 @@
             param: {value:"none",required:true},
             statement: {value:"",required:true},
             prepare: {value:"no",required:true},
+            logError: {value:"no",required:true},
             onErrorAction: {value:"terminate",required:true}
         },
         inputs:1,

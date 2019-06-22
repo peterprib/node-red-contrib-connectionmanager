@@ -1,21 +1,10 @@
-function propertyTree(p,l=0) {
-	if(typeof p !== 'object') return;
-	if(l>5) {
-		return;
-	}
-	Object.getOwnPropertyNames(p).forEach(function (val, idx, array) {
-		if(val==='length') return;
-		if(!Number.isNaN(Number.parseInt(val))) return;
-    	console.log('-'.repeat(l)+'> '+val);
-    	propertyTree(p[val],l+1);
- 	});
-}
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
     	this.log("Copyright 2019 Jaroslav Peter Prib");
     	var node=Object.assign(this,n);
     	node.prepareSQL=(node.prepare=="yes");
+    	node.isLogError=(node.logError=="yes");
         node.terminate=function(msg) {
         	node.error("Message terminated due to an error", msg);
         	if(msg.cm) {
@@ -70,19 +59,15 @@ module.exports = function(RED) {
        		msg.cm.query.apply(node,[msg,node.connection,node.statement,param,
 				function (result) {
 					msg.result=result;
-					
-					propertyTree(msg);
-					
 					node.send([msg]);
+					node.status({ fill: 'green', shape: 'ring', text: "OK" });
 				},
        			function(result,err) {
 					msg.result=result;
 					msg.error=err;
-
-					propertyTree(msg);
-
-
+					if(node.isLogError) node.error(JSON.stringify(err));
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
+					node.status({ fill: 'red', shape: 'ring', text: "Error" });
 				}
        		]);
        	});

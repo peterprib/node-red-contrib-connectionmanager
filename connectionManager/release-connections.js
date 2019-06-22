@@ -12,6 +12,8 @@ module.exports = function(RED) {
         	           	msg.error=errors||"no error message returned";
         	           	node.error(JSON.stringify({error:msg.errors,results:results}));
         	           	node.send([null,msg]);
+    					node.status({ fill: 'red', shape: 'ring', text: "Error check log" });
+
         	    	}
         	    ]);
         	} else {
