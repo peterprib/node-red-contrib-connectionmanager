@@ -1,3 +1,4 @@
+var sqlok;
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
@@ -38,29 +39,37 @@ module.exports = function(RED) {
         };
         node.log("set onErrorAction "+n.onErrorAction);
         node.onErrorAction=n.onErrorAction;
+        var setParam;
+   		switch (node.param) {
+   			case 'msg.payload':
+   				setParam=function(msg) {return msg.payload;};
+   				break;
+   			case 'msg.param':
+   				setParam=function(msg) {return msg.param;};
+   				break;
+   			case 'none': 
+   				setParam=function(msg) {return [];};
+   				break
+   			default:
+   				setParam=function(msg) {node.status({ fill: 'red', shape: 'ring', text: "Parameter type not selected" });};
+				break;
+    	}
+    	if(node.prepareSQL) {
+			node.status({ fill: 'yellow', shape: 'ring', text: "Prepare not initialized" });
+    	}
        	node.on('input', function (msg) {
        		if(!msg.cm) {
        			msg.error="no connections established by previous nodes";
        			node.send([null,msg]);
        			return;
        		}
-       		switch (node.param) {
-       			case 'msg.payload':
-       				var param=msg.payload;
-       				break;
-       			case 'msg.param':
-       				var param=msg.param;
-       				break;
-       			case 'none': 
-       			default:
-       				var param=[];
-       				break;
-       		}
-       		msg.cm.query.apply(node,[msg,node.connection,node.statement,param,
+       		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam(msg),
 				function (result) {
 					msg.result=result;
 					node.send([msg]);
-					node.status({ fill: 'green', shape: 'ring', text: "OK" });
+					if(!sqlok) {
+						node.status({ fill: 'green', shape: 'ring', text: "OK" });
+					}
 				},
        			function(result,err) {
 					msg.result=result;
@@ -68,6 +77,7 @@ module.exports = function(RED) {
 					if(node.isLogError) node.error(JSON.stringify(err));
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 					node.status({ fill: 'red', shape: 'ring', text: "Error" });
+					sqlok=false;
 				}
        		]);
        	});

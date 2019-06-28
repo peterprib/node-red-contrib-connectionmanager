@@ -38,7 +38,7 @@ function connectionProcessor(msg,action,done,error,a1,a2) {
 			(err)=>{
 				if(debug) console.log("connectionProcessor connection: "+connection+" error: "+err);
 				errors=errors||{};
-				try{	
+				try{
 					errors[connection]=getMessageString(err);
 				} catch(e) {
 					console.error("connectionProcessor catch error: "+e);
