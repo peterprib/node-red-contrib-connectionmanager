@@ -35,6 +35,7 @@
             <option value="node">None</option>
             <option value="msg.param">msg.param</option>
             <option value="msg.payload">msg.payload</option>
+            <option value="mapping">Mapping</option>
         </select>
     </div>
 
@@ -53,10 +54,31 @@
     <div>
         <input type="hidden" id="node-input-statement" autofocus="autofocus">
     </div>
+
+    <div class="form-row node-input-mapping-container-row hide>
+        <input type="hidden" id="node-input-mapping">
+    </div>
     
     <div class="form-row node-text-editor-row">
         <div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-input-statement-editor" ></div>
     </div>
+    
+    <div class="form-row node-input-param-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
+        <label style="vertical-align:top;"><i class="fa fa-list-alt"></i> Parameters </label>
+          <div style="width:100%; display: inline-block; background-color:#f3f3f3; border-top:0px solid; border-radius:0 0 0 0; border-bottom:1px solid #ccc;">
+	            <table style="width:100%">
+ 	              	<tbody id="node-input-param-tbody" stype="display: block; overflow: auto; max-width:800px; max-height: 400px;">
+                		<tr style="padding-left:4px; border-bottom: 1px solid black; background: lightblue; position: sticky; top: 0;">
+                			<td>No</td>
+                			<td>Value</td>
+                		</tr>
+                	</tbody>
+                </table>
+        </div>
+         <input type="hidden" id="node-input-errorFlag">
+    </div>
+</script>
+    
 </script>
 
 <script type="text/javascript">
@@ -67,10 +89,12 @@
             name: {value:"",required:false},
             connection: {required:false},
             param: {value:"none",required:true},
+            mapping:{value:[]},
             statement: {value:"",required:true},
             prepare: {value:"no",required:true},
             logError: {value:"no",required:true},
-            onErrorAction: {value:"terminate",required:true}
+            onErrorAction: {value:"terminate",required:true},
+            errorFlag: {value:0,required:true,validate:function(v) {console.log("valid: "+v); return (v||0)==0; }}
         },
         inputs:1,
         inputLabels: "",
@@ -86,6 +110,7 @@
 
         oneditprepare: function() {
             var ace = this;
+            this.mappingNew=this.mapping.slice()||[];
             this.editor = RED.editor.createEditor({
                 id: 'node-input-statement-editor',
                 mode: 'ace/mode/sql',
@@ -106,6 +131,11 @@
                 }
             });
             
+            this.editor.getSession().on('change', function() {
+	            $("#node-input-statement").val(ace.editor.getValue());
+	            $("#node-input-statement").change();
+			});
+            
             $("#node-input-statementlabel").click(function(e) {
                 e.preventDefault();
                 var value = ace.editor.getValue();
@@ -123,12 +153,68 @@
                     }
                 })
             })
-            
-            
-            
+            function mappingChange() {
+       			ace.mappingNew=[];
+       			ace.errorFlag = 0;
+	            $("#node-input-errorFlag").val(0);
+       			$("#node-input-param-tbody").find("input:text").each(function() {
+       				ace.mappingNew.push($(this).val());
+       				try{
+       					var test=eval("(msg)=>{return "+$(this).val()+";}");
+	            		$(this).css({'backgroundColor':'white'});	
+       				} catch(e) {
+       					ace.errorFlag = 1;
+	            		$("#node-input-errorFlag").val(1);
+	            		$(this).css({'backgroundColor':'red'});	
+       				}
+       			});
+            }
+            $("#node-input-statement").change(function () {
+				let statement=ace.editor.getValue();
+				let tbody=$("#node-input-param-tbody");
+				$('#node-input-param-tbody tr:gt(0)').remove()
+            	tbody.find('tr').slice(2,-1).remove(); // empty table
+				for(let p=0,i=0;i<statement.length;i++) {
+					if(statement[i]!=="?") continue;
+					p++;
+					if(p>ace.mappingNew.length) ace.mappingNew.push("msg.payload["+(p-1)+"]"); 
+	            	let row=$('<tr/>').appendTo(tbody);
+					$('<td/>').text(p).appendTo(row); // param no
+					$('<td/>').append($('<input />', {
+						type:'text',
+						size: 100,
+						style:'width:100%',
+						value: ace.mappingNew[p-1]
+						}).change(mappingChange)
+					).appendTo(row); // mappinng
+				}
+				mappingChange();	
+            }).change();
+            $('#node-input-param').change(function () {
+                if ($(this).val()=="mapping") {
+                    $(".node-input-param-container-row").show();
+                } else {
+                    $(".node-input-param-container-row").hide();
+                }
+        	});
         },
         oneditsave: function() {
             $("#node-input-statement").val(this.editor.getValue());
+            this.editor.destroy();
+            delete this.editor;
+            var same=(this.mapping.length==this.mappingNew);
+            if(same) {
+	            for(var i=0;i<=this.mapping.length;i++){
+    	        	if(this.mapping[i]!==this.mappingNew) {
+    	        		same=false;
+    	        	}
+    	        }
+            }
+            if(!same) {
+            	$("#node-input-mapping").val(this.mappingNew);
+            }
+        },
+        oneditcancel: function() {
             this.editor.destroy();
             delete this.editor;
         },

@@ -1,3 +1,5 @@
+const ts=(new Date().toString()).split(' ');
+console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] get-connection Copyright 2019 Jaroslav Peter Prib");
 function connectionName(node) {
 	if(node.connectionNode) {
 		try{
@@ -10,7 +12,6 @@ function connectionName(node) {
 }
 module.exports = function(RED) {
     function GetConnectionNode(n) {
-    	this.log("Copyright 2019 Jaroslav Peter Prib");
         RED.nodes.createNode(this,n);
         var node=Object.assign(this,n);
         node.connectionNode=RED.nodes.getNode(node.connection);

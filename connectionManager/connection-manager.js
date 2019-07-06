@@ -1,3 +1,5 @@
+const ts=(new Date().toString()).split(' ');
+console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] connection-manager Copyright 2019 Jaroslav Peter Prib");
 var debug=false;
 function toggleDebug() {
 	debug=!debug;
@@ -383,7 +385,6 @@ ConnectionPool.prototype.releaseStaleConnections=function() {
 module.exports = function(RED) {
     function ConnectionManagerNode(n) {
         RED.nodes.createNode(this,n);
-        this.log("Copyright 2019 Jaroslav Peter Prib");
         var node=Object.assign(this,n,{port:Number(n.port)});
         node.connectionPool=new ConnectionPool(node);
         node.toggleDebug=toggleDebug;

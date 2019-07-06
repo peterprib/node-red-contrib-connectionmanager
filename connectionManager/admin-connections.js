@@ -1,7 +1,8 @@
+const ts=(new Date().toString()).split(' ');
+console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] admin-connection Copyright 2019 Jaroslav Peter Prib");
 module.exports = function(RED) {
     function AdminConnectionNode(n) {
         RED.nodes.createNode(this,n);
-        this.log("Copyright 2019 Jaroslav Peter Prib");
         var node=Object.assign(this,n);
         node.on('input', function (msg) {
         	switch(msg.topic) {

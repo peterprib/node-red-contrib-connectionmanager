@@ -1,8 +1,16 @@
-var sqlok;
+const ts=(new Date().toString()).split(' ');
+console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] cm-statement Copyright 2019 Jaroslav Peter Prib");
+
+let sqlok;
+function Mapping(msg) {
+	let params=[];
+	this.mappingCompiled.forEach((r)=>params.push(r.apply(this,[msg])));
+	this.debug("Mapping out: "+JSON.stringify(params));
+	return params;
+}
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
-    	this.log("Copyright 2019 Jaroslav Peter Prib");
     	var node=Object.assign(this,n);
     	node.prepareSQL=(node.prepare=="yes");
     	node.isLogError=(node.logError=="yes");
@@ -50,8 +58,25 @@ module.exports = function(RED) {
    			case 'none': 
    				setParam=function(msg) {return [];};
    				break
+   			case 'mapping':
+   				let failed;
+   				node.mappingCompiled=[];
+   				node.mapping.forEach((r)=>{
+   					try{
+   						node.mappingCompiled.push(eval("(msg)=>{return "+r+";}"));
+   					} catch(e) {
+   						failed=true;
+   						node.mappingCompiled.push(function(){return undefined;});
+   						node.error('mapping failed for : "'+r+'" error: '+e);
+   					}
+   				});
+   				if(failed) node.status({ fill: 'red', shape: 'ring', text: "Mapping failed check log for details" });
+ 				node.log("Mapping compiled: "+JSON.stringify(node.mappingCompiled));
+   				setParam=Mapping;
+   				break
    			default:
-   				setParam=function(msg) {node.status({ fill: 'red', shape: 'ring', text: "Parameter type not selected" });};
+   				node.status({ fill: 'red', shape: 'ring', text: "Parameter type not selected, defaulting to payload" });
+   				setParam=function(msg) {return msg.payload;};
 				break;
     	}
     	if(node.prepareSQL) {
@@ -63,7 +88,7 @@ module.exports = function(RED) {
        			node.send([null,msg]);
        			return;
        		}
-       		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam(msg),
+       		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam.apply(node,[msg]),
 				function (result) {
 					msg.result=result;
 					node.send([msg]);
