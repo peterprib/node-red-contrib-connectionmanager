@@ -23,10 +23,14 @@ function processArray(node,msg,source,index) {
 		return;
 	}
 	try{
-		msg.cm.query.apply(node,[msg,node.connection,node.statement,node.mappingCompiled.apply(node,[source[index]]),
+		msg.cm.query.apply(node,[msg,node.connection,node.statement,node.mappingCompiled.apply(node,[node,msg,source[index]]),
 			(result)=>{
 				msg.result.push(result);
 				processArray.apply(this,[node,msg,source,++index]);
+				if(!sqlok) {
+					node.status({ fill: 'green', shape: 'ring', text: "OK" });
+					sqlok=true;
+				}
 			},			
 			(result,err)=>{
 				msg.result.push(result);
@@ -40,6 +44,10 @@ function processArray(node,msg,source,index) {
 		msg.error=msg.error||[];
 		msg.error[index]=e.message;
 		if(node.isLogError) node.error(JSON.stringify(e.message));
+		if(sqlok) {
+			node.status({ fill: 'red', shape: 'ring', text: "Error" });
+			sqlok=false;
+		}
   	}
 }
 
@@ -94,11 +102,15 @@ module.exports = function(RED) {
    				setParam=function() {return [];};
    				break
    			case 'arraymapping': 
-				let paramText="(r)=>{ return [";
+				let paramText="(node,msg,r)=>{ return [";
    				try{
 	   				node.getArraySource=eval("(node,msg)=>{return "+node.arraySource+";}");
 		   			node.mapping.forEach((c)=>{
-	   					paramText+="r["+c+"],";
+		   				if(c==-1) {
+		   					paramText+="msg.topic,";
+		   				} else {
+		   					paramText+="r["+c+"],";
+		   				}
 		   			});
 					paramText=paramText.slice(0, -1)+"];}";
 	   				node.log("Mapping : "+paramText);
@@ -154,6 +166,7 @@ module.exports = function(RED) {
 					node.send([msg]);
 					if(!sqlok) {
 						node.status({ fill: 'green', shape: 'ring', text: "OK" });
+						sqlok=true;
 					}
 				},
        			function(result,err) {

@@ -76,7 +76,7 @@
  	              	<tbody id="node-input-param-tbody" stype="display: block; overflow: auto; max-width:800px; max-height: 400px;">
                 		<tr style="padding-left:4px; border-bottom: 1px solid black; background: lightblue; position: sticky; top: 0;">
                 			<td>No</td>
-                			<td>Value</td>
+                			<td>Array offset (-1 = msg.topic)</td>
                 		</tr>
                 	</tbody>
                 </table>
@@ -240,7 +240,7 @@
 						$('<td/>').append($('<input />', {
 							type:'number',
 							size: 3,
-							min: 0,
+							min: -1,
 							max: 999,
 							value: ace.mappingNew[p-1]
 							}).change(arrayMappingChange)
