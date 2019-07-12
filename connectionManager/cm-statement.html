@@ -32,10 +32,11 @@
     <div class="form-row">
         <label for="node-input-param"><i class="fa fa-list-ul"></i> Parameter Array</label>
         <select id="node-input-param">
-            <option value="node">None</option>
+            <option value="none">None</option>
             <option value="msg.param">msg.param</option>
             <option value="msg.payload">msg.payload</option>
             <option value="mapping">Mapping</option>
+            <option value="arraymapping">Array Mapping</option>
         </select>
     </div>
 
@@ -63,6 +64,11 @@
         <div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-input-statement-editor" ></div>
     </div>
     
+    <div class="form-row node-input-arraySource-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
+        <label for="node-input-arraySource"><i class="fa fa-list-ul"></i> Array Source</label>
+        <input type="text" id="node-input-arraySource" size="100">
+    </div>
+    
     <div class="form-row node-input-param-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
         <label style="vertical-align:top;"><i class="fa fa-list-alt"></i> Parameters </label>
           <div style="width:100%; display: inline-block; background-color:#f3f3f3; border-top:0px solid; border-radius:0 0 0 0; border-bottom:1px solid #ccc;">
@@ -88,19 +94,20 @@
         defaults: {
             name: {value:"",required:false},
             connection: {required:false},
+            arraySource: {value:"msg.payload",required:false},
             param: {value:"none",required:true},
             mapping:{value:[]},
             statement: {value:"",required:true},
             prepare: {value:"no",required:true},
             logError: {value:"no",required:true},
             onErrorAction: {value:"terminate",required:true},
-            errorFlag: {value:0,required:true,validate:function(v) {console.log("valid: "+v); return (v||0)==0; }}
+            errorFlag: {value:0,required:true,validate:function(v) {return (v||0)==0;} }
         },
         inputs:1,
         inputLabels: "",
         outputs:2,
         outputLabels: ["OK","Error"],
-        icon: "arrow-in.png",
+        icon: "icons8-run-command-48.png",
         label: function() {
             return this.name||this._("cm-statement");
         },
@@ -110,7 +117,10 @@
 
         oneditprepare: function() {
             var ace = this;
-            this.mappingNew=this.mapping.slice()||[];
+   			ace.errorFlag = 0;
+            $("#node-input-errorFlag").val(0);
+            if(!this.mapping) this.mapping=[];
+            this.mappingNew=this.mapping.slice();
             this.editor = RED.editor.createEditor({
                 id: 'node-input-statement-editor',
                 mode: 'ace/mode/sql',
@@ -153,6 +163,12 @@
                     }
                 })
             })
+            function arrayMappingChange() {
+       			ace.mappingNew=[];
+       			$("#node-input-param-tbody").find("input[type='text'] , input[type='number']" ).each(function() {
+       				ace.mappingNew.push($(this).val());
+       			});
+            }
             function mappingChange() {
        			ace.mappingNew=[];
        			ace.errorFlag = 0;
@@ -169,40 +185,91 @@
        				}
        			});
             }
+            $("#node-input-arraySource").change(function () {
+       			try{
+       				var test=eval("(msg)=>{return "+$(this).val()+";}");
+	           		$(this).css({'backgroundColor':'white'});	
+    			} catch(e) {
+    				ace.errorFlag = 1;
+	         		$("#node-input-errorFlag").val(1);
+	           		$(this).css({'backgroundColor':'red'});	
+    			}
+            });
+            $('#node-input-param').change(function () {
+            	let param=$(this).val();
+                if (["arraymapping"].includes(param)) {
+                    $(".node-input-arraySource-container-row").show();
+                    if(($("#node-input-arraySource").val()||"").trim()=="") {
+                    	$("#node-input-arraySource").val("msg.payload");
+                    }
+                } else {
+                    $(".node-input-arraySource-container-row").hide();
+                }
+                if (["mapping","arraymapping"].includes(param)) {
+                    $("#node-input-statement").change();
+                    $(".node-input-param-container-row").show();
+                    if(ace.param==param) {
+    					ace.mappingNew=ace.mapping.slice();
+                    } else {
+	                   ace.mappingNew=[];
+	                }
+                    $("#node-input-statement").change();
+                } else {
+                    $(".node-input-param-container-row").hide();
+                }
+        	});
             $("#node-input-statement").change(function () {
+                if(!["arraymapping","mapping"].includes($("#node-input-param").val())) {
+                	return;
+                }
 				let statement=ace.editor.getValue();
 				let tbody=$("#node-input-param-tbody");
+				let isArrayMapping=["arraymapping"].includes($("#node-input-param").val());
 				$('#node-input-param-tbody tr:gt(0)').remove()
             	tbody.find('tr').slice(2,-1).remove(); // empty table
 				for(let p=0,i=0;i<statement.length;i++) {
 					if(statement[i]!=="?") continue;
 					p++;
-					if(p>ace.mappingNew.length) ace.mappingNew.push("msg.payload["+(p-1)+"]"); 
 	            	let row=$('<tr/>').appendTo(tbody);
 					$('<td/>').text(p).appendTo(row); // param no
-					$('<td/>').append($('<input />', {
-						type:'text',
-						size: 100,
-						style:'width:100%',
-						value: ace.mappingNew[p-1]
-						}).change(mappingChange)
-					).appendTo(row); // mappinng
+					
+					if (isArrayMapping) {
+						if(p>ace.mappingNew.length) {
+							ace.mappingNew.push((p-1).toString());
+						}
+						$('<td/>').append($('<input />', {
+							type:'number',
+							size: 3,
+							min: 0,
+							max: 999,
+							value: ace.mappingNew[p-1]
+							}).change(arrayMappingChange)
+						).appendTo(row); // mappinng
+					} else {
+						if(p>ace.mappingNew.length) {
+							ace.mappingNew.push("msg.payload["+(p-1)+"]");
+						} 
+						$('<td/>').append($('<input />', {
+							type:'text',
+							size: 100,
+							style:'width:100%',
+							value: ace.mappingNew[p-1]
+							}).change(mappingChange)
+						).appendTo(row); // mappinng
+					}
 				}
-				mappingChange();	
+				if (isArrayMapping) {
+					arrayMappingChange();
+				} else {
+					mappingChange();
+				}
             }).change();
-            $('#node-input-param').change(function () {
-                if ($(this).val()=="mapping") {
-                    $(".node-input-param-container-row").show();
-                } else {
-                    $(".node-input-param-container-row").hide();
-                }
-        	});
         },
         oneditsave: function() {
             $("#node-input-statement").val(this.editor.getValue());
             this.editor.destroy();
             delete this.editor;
-            var same=(this.mapping.length==this.mappingNew);
+            var same=(this.mapping.length==this.mappingNew.length);
             if(same) {
 	            for(var i=0;i<=this.mapping.length;i++){
     	        	if(this.mapping[i]!==this.mappingNew) {
@@ -227,7 +294,7 @@
             var editorRow = $("#dialog-form>div.node-text-editor-row");
             height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
             $(".node-text-editor").css("height",height+"px");
-            this.editor.resize();
+            if(this.editor) this.editor.resize();
         }
     });
 

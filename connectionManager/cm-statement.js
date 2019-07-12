@@ -8,6 +8,41 @@ function Mapping(msg) {
 	this.debug("Mapping out: "+JSON.stringify(params));
 	return params;
 }
+function processArray(node,msg,source,index) {
+	if(index>=source.length) {
+		node.send([msg]);
+		if(msg.error) {
+			node.status({ fill: 'red', shape: 'ring', text: "Error" });
+			node.lastError=true
+			node[node.onErrorAction||"terminate"].apply(node,[msg]);
+		} else {
+			if(node.lastError) {
+				node.status({ fill: 'green', shape: 'ring', text: "OK" });
+			}
+		}
+		return;
+	}
+	try{
+		msg.cm.query.apply(node,[msg,node.connection,node.statement,node.mappingCompiled.apply(node,[source[index]]),
+			(result)=>{
+				msg.result.push(result);
+				processArray.apply(this,[node,msg,source,++index]);
+			},			
+			(result,err)=>{
+				msg.result.push(result);
+				msg.error=msg.error||[];
+				msg.error[index]=err;
+				if(node.isLogError) node.error(JSON.stringify(err));
+			}
+  		]);
+  	} catch(e) {
+		msg.result.push(null);
+		msg.error=msg.error||[];
+		msg.error[index]=e.message;
+		if(node.isLogError) node.error(JSON.stringify(e.message));
+  	}
+}
+
 module.exports = function(RED) {
     function cmStatementNode(n) {
         RED.nodes.createNode(this,n);
@@ -47,32 +82,44 @@ module.exports = function(RED) {
         };
         node.log("set onErrorAction "+n.onErrorAction);
         node.onErrorAction=n.onErrorAction;
-        var setParam;
+        let setParam;
    		switch (node.param) {
    			case 'msg.payload':
-   				setParam=function(msg) {return msg.payload;};
+   				setParam=function(node,msg) {return msg.payload;};
    				break;
    			case 'msg.param':
-   				setParam=function(msg) {return msg.param;};
+   				setParam=function(node,msg) {return msg.param;};
    				break;
    			case 'none': 
-   				setParam=function(msg) {return [];};
+   				setParam=function() {return [];};
    				break
+   			case 'arraymapping': 
+				let paramText="(r)=>{ return [";
+   				try{
+	   				node.getArraySource=eval("(node,msg)=>{return "+node.arraySource+";}");
+		   			node.mapping.forEach((c)=>{
+	   					paramText+="r["+c+"],";
+		   			});
+					paramText=paramText.slice(0, -1)+"];}";
+	   				node.log("Mapping : "+paramText);
+					node.mappingCompiled=eval(paramText);
+				} catch(e) {
+					node.mappingCompiled=function(){return undefined;};
+					node.error('array source failed error: '+e);
+					node.status({ fill: 'red', shape: 'ring', text: "Array mapping failed check log for details" });
+   				}
+   				break;
    			case 'mapping':
-   				let failed;
-   				node.mappingCompiled=[];
-   				node.mapping.forEach((r)=>{
-   					try{
-   						node.mappingCompiled.push(eval("(msg)=>{return "+r+";}"));
-   					} catch(e) {
-   						failed=true;
-   						node.mappingCompiled.push(function(){return undefined;});
-   						node.error('mapping failed for : "'+r+'" error: '+e);
-   					}
-   				});
-   				if(failed) node.status({ fill: 'red', shape: 'ring', text: "Mapping failed check log for details" });
- 				node.log("Mapping compiled: "+JSON.stringify(node.mappingCompiled));
-   				setParam=Mapping;
+				try{
+					let paramText="(node,msg)=>{ return ["+node.mapping.join(",")+"];}";
+		   			node.log("Mapping : "+paramText);
+					node.mappingCompiled=eval(paramText);
+					setParam=node.mappingCompiled;
+				} catch(e) {
+					node.mappingCompiled=function(){return undefined;};
+					node.error('array source failed error: '+e);
+					node.status({ fill: 'red', shape: 'ring', text: "Mapping failed check log for details" });
+   				}
    				break
    			default:
    				node.status({ fill: 'red', shape: 'ring', text: "Parameter type not selected, defaulting to payload" });
@@ -88,8 +135,21 @@ module.exports = function(RED) {
        			node.send([null,msg]);
        			return;
        		}
-       		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam.apply(node,[msg]),
-				function (result) {
+       		if(node.getArraySource) {  // implies array mapping
+       			msg.result=[];
+       			delete msg.error;
+       			try{
+       				processArray.apply(this,[node,msg,node.getArraySource(node,msg),0]);
+       			} catch(e) {
+					msg.error=e.toString();
+					if(node.isLogError) node.error(e.toString());
+					node[node.onErrorAction||"terminate"].apply(node,[msg]);
+					node.status({ fill: 'red', shape: 'ring', text: "Error" });
+       			}
+       			return;
+       		} 
+	   		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam.apply(node,[node,msg]),
+					function (result) {
 					msg.result=result;
 					node.send([msg]);
 					if(!sqlok) {

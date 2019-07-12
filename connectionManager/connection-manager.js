@@ -400,8 +400,8 @@ module.exports = function(RED) {
         			,query:query
         			};
             	RED.util.setMessageProperty(msg,"cm",cm);
+            	cm.autoCommit=(node.autoCommit=="yes");
         	}
-        	cm.autoCommit=(node.autoCommit=="yes");
         	node.connectionPool.getConnection(	//getConnectionTransactional
         		(connection)=>{
                     msg.cm.connection[node.name]=connection;
