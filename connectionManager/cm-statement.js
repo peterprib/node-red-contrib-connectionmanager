@@ -1,7 +1,6 @@
 const ts=(new Date().toString()).split(' ');
 console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] cm-statement Copyright 2019 Jaroslav Peter Prib");
 
-let sqlok;
 function Mapping(msg) {
 	let params=[];
 	this.mappingCompiled.forEach((r)=>params.push(r.apply(this,[msg])));
@@ -27,9 +26,9 @@ function processArray(node,msg,source,index) {
 			(result)=>{
 				msg.result.push(result);
 				processArray.apply(this,[node,msg,source,++index]);
-				if(!sqlok) {
+				if(!node.sqlok) {
 					node.status({ fill: 'green', shape: 'ring', text: "OK" });
-					sqlok=true;
+					node.sqlok=true;
 				}
 			},			
 			(result,err)=>{
@@ -44,9 +43,9 @@ function processArray(node,msg,source,index) {
 		msg.error=msg.error||[];
 		msg.error[index]=e.message;
 		if(node.isLogError) node.error(JSON.stringify(e.message));
-		if(sqlok) {
+		if(node.sqlok) {
 			node.status({ fill: 'red', shape: 'ring', text: "Error" });
-			sqlok=false;
+			node.sqlok=false;
 		}
   	}
 }
@@ -56,6 +55,7 @@ module.exports = function(RED) {
         RED.nodes.createNode(this,n);
     	var node=Object.assign(this,n);
     	node.prepareSQL=(node.prepare=="yes");
+    	node.sqlok=false;
     	node.isLogError=(node.logError=="yes");
         node.terminate=function(msg) {
         	node.error("Message terminated due to an error", msg);
@@ -164,9 +164,9 @@ module.exports = function(RED) {
 					function (result) {
 					msg.result=result;
 					node.send([msg]);
-					if(!sqlok) {
+					if(!node.sqlok) {
 						node.status({ fill: 'green', shape: 'ring', text: "OK" });
-						sqlok=true;
+						node.sqlok=true;
 					}
 				},
        			function(result,err) {
@@ -175,7 +175,7 @@ module.exports = function(RED) {
 					if(node.isLogError) node.error(JSON.stringify(err));
 					node[node.onErrorAction||"terminate"].apply(node,[msg]);
 					node.status({ fill: 'red', shape: 'ring', text: "Error" });
-					sqlok=false;
+					node.sqlok=false;
 				}
        		]);
        	});
