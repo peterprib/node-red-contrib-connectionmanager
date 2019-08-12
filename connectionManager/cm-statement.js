@@ -99,7 +99,7 @@ module.exports = function(RED) {
    				setParam=function(node,msg) {return msg.param;};
    				break;
    			case 'none': 
-   				setParam=function() {return [];};
+   				setParam=function() {return null;};
    				break
    			case 'arraymapping': 
 				let paramText="(node,msg,r)=>{ return [";

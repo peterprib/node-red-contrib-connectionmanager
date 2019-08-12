@@ -210,14 +210,6 @@ ConnectionPool.prototype.close=function(c,done,error) {
 		this.driver.close(c,done,error);
 	}
 };
-ConnectionPool.prototype.commit=function(c,done,error) {
-	var pool=this;
-	this.driver.commit(this.pool[c.id],done,(err)=>{
-		if(debug) console.log("ConnectionPool commit "+err);
-		pool.checkDeadConnection(c,err);
-		error(err)
-	});
-};
 ConnectionPool.prototype.closeAll=function(done) {
 	this.node.log("closing all connections");
 	var running=1;
@@ -229,6 +221,14 @@ ConnectionPool.prototype.closeAll=function(done) {
 	}
 	if(--running==0) done();
 }
+ConnectionPool.prototype.commit=function(c,done,error) {
+	var pool=this;
+	this.driver.commit(this.pool[c.id],done,(err)=>{
+		if(debug) console.log("ConnectionPool commit "+err);
+		pool.checkDeadConnection(c,err);
+		error(err)
+	});
+};
 ConnectionPool.prototype.connection=function(c) {
 	this.pool[c];
 }
@@ -257,7 +257,7 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 		try{
 			this.driver=DriverType[this.driverType];
 			if(this.driver==null) throw Error("Driver returned null");
-			this.autoCommit=this.driver.autoCommit;
+			this.autoCommit=this.driver.autoCommit||true;
 			this.preparable=!(this.driver.prepareIsQuery||false);
 		} catch(e) {
 			var err="Driver load failed, may need install by 'npm install "+this.driverType+"', drivers aren't install by default to minimise foot print";
@@ -282,7 +282,6 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 	this.driver.getConnection(this.node,
 		function (connection) {
 			connectionPool.node.log("new connection "+connectionPool.node.name);
-			
 			var c = connectionPool.pool.find((e)=>e==null);
 			if(c) {
 				connectionPool.pool[c]=connection;
@@ -318,7 +317,6 @@ ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 		done(sql);
 		return;
 	}
-	
 	var pool=this;
 	this.driver.prepare(this.pool[c.id],(this.driver.translateSQL?this.driver.translateSQL(sql):sql),
 		(prepared)=>{
@@ -382,6 +380,24 @@ ConnectionPool.prototype.releaseStaleConnections=function() {
 		console.error("releaseStaleConnections failed: "+e)
 	}
 }
+ConnectionPool.prototype.releaseFreeConnections=function() {
+	this.node.log("closing "+this.free.length+" free connections");
+	let running=1,n,thisObject=this;
+	for(let i=0;i<this.free.length;i++) {
+		running++;
+		n=this.free[i];
+		this.pool[n].close.apply(this.pool,[n,
+			function(){if(--running) thisObject.node.log("closed free connections");},
+			function(err){
+				thisObject.node.error(err);
+				if(--running) thisObject.node.log("closed free connections");
+			}
+		]);
+	}
+	if(--running==0) this.node.log("closed free connections");
+;
+}
+
 module.exports = function(RED) {
     function ConnectionManagerNode(n) {
         RED.nodes.createNode(this,n);
@@ -389,10 +405,7 @@ module.exports = function(RED) {
         node.connectionPool=new ConnectionPool(node);
         node.toggleDebug=toggleDebug;
         Pools[node.name]=node.connectionPool;
-        if (node.credentials) {
-        	node.user = node.credentials.user;
-        	node.password = node.credentials.password;
-        }
+
         node.setMsg= function(msg,done,error) {
         	if(!msg.cm) {
         		var cm={id:node.id,running:0,connection:{},stack:[]
@@ -427,15 +440,15 @@ module.exports = function(RED) {
        	});
        	node.releaseStaleConnections = setInterval(function(node) {node.connectionPool.releaseStaleConnections.apply(node.connectionPool)}, 1000*60,node);
    }
-   RED.nodes.registerType("Connection Manager",ConnectionManagerNode,
-    	{credentials: {
+   RED.nodes.registerType("Connection Manager",ConnectionManagerNode,{
+	   credentials: {
             user: {type: "text"},
             password: {type: "password"}
-        }});
+       }
+   });
 };
 
 function Driver(a) {
-	this.testOnConnect="select 'connect dummy test'";
 	if(!a.optionsMapping) {
 		this.optionsMapping ={
 			host     : "host", 
@@ -445,15 +458,27 @@ function Driver(a) {
 			password : "password"
 		};
 	}
-	this.autoCommit=false;
-	Object.assign(this,a);
-	this.getConnection=this.q?this.getConnectionQ:this.getConnectionC;
-	this.query=this.q?this.queryQ:this.queryC;
-	this.prepare=this.q?this.prepareQ:this.prepareC;
-	this.exec=this.q?this.execQ:this.execC;
+	Object.assign(this,{
+			autoCommit:false,
+			connectPhrase:"connect",
+			testOnConnect:"select 'connect dummy test'",
+			getConnection: this.getConnectionC,
+			paramNull:null,
+			query:this.queryC,
+			prepare:this.prepareC,
+			exec:this.execC,
+			beginTransaction:this.beginTransactionSql,
+			commit:this.commitSql
+		},
+		a
+	);
 }
-Driver.prototype.beginTransaction=function(conn,done,error) {
-	if(debug) console.log("Driver.beginTransaction");
+Driver.prototype.beginTransactionNoAction=function(conn,done,error) {
+	if(debug) console.log("Driver.beginTransactionNoAction");
+	done();
+}
+Driver.prototype.beginTransactionSql=function(conn,done,error) {
+	if(debug) console.log("Driver.beginTransactionSql");
 	this.query(conn,"Start Transaction",null,done,error);
 };
 Driver.prototype.close=function(conn,done,error) {
@@ -466,7 +491,11 @@ Driver.prototype.close=function(conn,done,error) {
 		done([{sql:sql,error:err}]);
 	});
 };
-Driver.prototype.commit=function(conn,done,error) {
+Driver.prototype.commitNoAction=function(conn,done,error) {
+	if(debug) console.log("Driver.commitNoAction");
+	done();
+};
+Driver.prototype.commitSql=function(conn,done,error) {
 	if(debug) console.log("Driver.commit");
 	this.query(conn,"commit",null,done,error);
 };
@@ -477,10 +506,16 @@ Driver.prototype.getOptions=function(node) {
 		for(var i in this.optionsMapping ) {
 			try{
 				if(debug) console.log("Driver.getOptions propery "+i+" set to configuration property "+this.optionsMapping[i]);
-				this.options[i]=node[this.optionsMapping[i]];
-				if(this.options[i]==null) throw Error("not set but expected");
+				if(node.credentials && node.credentials.hasOwnProperty(this.optionsMapping[i])) {
+					this.options[i]=node.credentials[this.optionsMapping[i]];
+				} else {
+					this.options[i]=node[this.optionsMapping[i]];
+				}
+				if(this.options[i]==null) {
+					throw Error("not set but expected");
+				}
 			} catch(e) {
-				node.error("option "+i+" set to configuration property "+this.options[i]+" has problem "+e)
+				node.error("option "+i+" set to configuration property "+this.optionsMapping[i]+" has problem "+e)
 			}
 		}
 	}
@@ -509,12 +544,54 @@ Driver.prototype.getConnectionC=function(node,done,error) {
 		error(e);
 	}
 };
-Driver.prototype.getConnectionQ=function(node,done,error) {
+Driver.prototype.getConnectionO=function(node,done,error) {
 	try{
 		var options=this.getOptions(node);
+		if(debug) console.log("getConnectionC "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
+		if(!this.driverInstance) this.driverInstance= new (this.Driver());
+		let thisObject=this,
+			connectString="DATABASE="+options.database+";HOSTNAME="+options.host+";UID="+options.user+";PWD="+options.password+";PORT="+options.port+";PROTOCOL=TCPIP";
+		this.driverInstance.open(connectString,(err,conn)=>{
+			if(err) {
+				if(debug) console.log("getConnection error "+err);
+				error(err);
+				return;
+			}
+			if(thisObject.testOnConnect) {
+				thisObject.query(conn,thisObject.testOnConnect,null,()=>done(conn),error);
+			} else {
+				done(conn);
+			}
+		});
+	} catch(e) {
+		console.error("Driver.getConnectionC error: "+e);
+		error(e);
+	}
+};
+Driver.prototype.getConnectionNeo4j=function(node,done,error) {
+	try{
+		let options=this.getOptions(node);
+		if(debug) console.log("getConnectionNeo4j "+JSON.stringify(Object.assign({},options)));
+		let neo4j=new this.Driver(),
+			driver=neo4j.driver("bolt://"+options.host+":"+options.host, neo4j.auth.basic(options.user,options.password));
+		if(!driver) throw Error("driver build failed");
+		var session=driver.session();
+		if(this.testOnConnect) {
+			this.query(session,this.testOnConnect,null,()=>done(session),error);
+		} else {
+			done(session);
+		}
+	} catch(e) {
+		console.error("Driver.getConnectionNeo4j error: "+e);
+		error(e);
+	}
+};
+Driver.prototype.getConnectionQ=function(node,done,error) {
+	try{
+		let options=this.getOptions(node);
 		if(debug) console.log("getConnectionQ "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
-		var c = new this.Driver(options);
-		var thisObject=this;
+		let c = new this.Driver(options),
+			thisObject=this;
 		c.connect(options).then(
 			()=>{
 				if(thisObject.testOnConnect) {
@@ -537,7 +614,7 @@ Driver.prototype.execQ=function(preparedSql,params,done,error) {
 	if(debug) console.log("Driver.execQ "+JSON.stringify({params:params}));
 	var thisObject=this;
 	try{
-		preparedSql.exec(params).then(
+		preparedSql.exec(params||this.paramNull).then(
 			(result)=>{
 				if(debug) console.log("Driver.execQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
 				done(result);
@@ -579,7 +656,7 @@ Driver.prototype.queryC=function(conn,sql,params,done,error) {
 	if(debug) console.log("Driver.queryC "+JSON.stringify({sql:sql,params:params}));
 	var thisObject=this;
 	try{
-		conn.query(sql,params,(err, result) => {
+		conn.query(sql,(params||this.paramNull),(err, result) => {
 			if(err) {
 				if(debug) console.log("Driver.queryC error: "+err);
 				error(err);
@@ -593,11 +670,20 @@ Driver.prototype.queryC=function(conn,sql,params,done,error) {
 		error(e);
 	}
 },
+Driver.prototype.queryNeo4j=function(session,cmd,params,done,error) {
+	if(debug) console.log("Driver.queryNeo4j "+JSON.stringify({cmd:cmd,params:params}));
+	try{
+		session.run(cmd,(params||this.paramNull)).then(done).catch(error);
+	} catch(e) {
+		console.error("Driver.queryNeo4j error: "+e);
+		error(e);
+	}
+},
 Driver.prototype.queryQ=function(conn,sql,params,done,error) {
 	if(debug) console.log("Driver.queryQ "+JSON.stringify({sql:sql,params:params}));
 	var thisObject=this;
 	try{
-		conn.query(sql,params).then(
+		conn.query(sql,(params||this.paramNull)).then(
 			(result)=>{
 				if(debug) console.log("Driver.queryQ first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
 				done(result);
@@ -624,10 +710,20 @@ Driver.prototype.translateSQL=function(sql) {
 	return sql;
 };
 var DriverType = {
+		'db2': new Driver({
+			Driver: function() {
+				return require('ibm_db');
+			},
+			getConnection: Driver.prototype.getConnectionO
+		}),
 		'monetdb': new Driver({
 			Driver:require('monetdb')({maxReconnects:0,debug:false}),
 			autoCommit:true,
-			q:true,
+			getConnection: Driver.prototype.getConnectionQ,
+			paramNull: [],
+			query:Driver.prototype.queryQ,
+			prepare:Driver.prototype.prepareQ,
+			exec:Driver.prototype.execQ,
 			optionsMapping: {
 				host     : "host", 
 				port     : "port", 
@@ -635,11 +731,24 @@ var DriverType = {
 				user     : "user", 
 				password : "password"
 			},
+			prepareIsQuery:false,
 			errorDeadConnection: [
 				"Cannot accept request: connection was destroyed.",
 				"Failed to connect to MonetDB server"
 			]
 		}),
+		'neo4j': new Driver({
+			Driver: function() {
+				return require('neo4j-driver').v1;
+			},
+			autoCommit:false,
+			beginTransaction:Driver.prototype.beginTransactionNoAction,
+			commit:Driver.prototype.commitNoAction,
+			prepareIsQuery:true,
+			testOnConnect:null,
+			getConnection: Driver.prototype.getConnectionNeo4j,
+			query:Driver.prototype.queryNeo4j
+		}),	
 		'pg': new Driver({
 			Driver: function() {
 				return require('pg').Client;
@@ -653,4 +762,3 @@ var DriverType = {
 			}
 		})
 	};
-

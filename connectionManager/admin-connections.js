@@ -50,6 +50,13 @@ module.exports = function(RED) {
         				cmNode.connectionPool.releaseStaleConnections.apply(cmNode.connectionPool);
         			});
         			msg.payload="release stale connections initiated";
+        		case 'releaseFree':
+        			RED.nodes.eachNode(function(n) {
+        				if(n.type!=="Connection Manager") return;
+        				var cmNode=RED.nodes.getNode(n.id);
+        				cmNode.connectionPool.releaseFreeConnections.apply(cmNode.connectionPool);
+        			});
+        			msg.payload="release stale connections initiated";
         	}
 			node.send(msg);
         });

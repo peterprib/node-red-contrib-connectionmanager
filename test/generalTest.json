@@ -1,1 +1,912 @@
-[{"id":"f9b48a32.59f628","type":"tab","label":"CM Test","disabled":false,"info":""},{"id":"462838e8.20aaf8","type":"Get Connection","z":"f9b48a32.59f628","name":"","connection":"bc442b9a.f8d298","autoCommit":"no","x":280,"y":140,"wires":[["9d96963a.54d138"],["9faf66f9.58bf48"]]},{"id":"9faf66f9.58bf48","type":"debug","z":"f9b48a32.59f628","name":"err","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":730,"y":80,"wires":[]},{"id":"f8e585d6.675848","type":"inject","z":"f9b48a32.59f628","name":"","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":100,"y":140,"wires":[["462838e8.20aaf8"]]},{"id":"9d96963a.54d138","type":"Release Connections","z":"f9b48a32.59f628","name":"","rollback":"no","x":540,"y":140,"wires":[["c2499215.9948d"],["f27c0efc.39cf4"]]},{"id":"98409ca5.5ce07","type":"Admin Connections","z":"f9b48a32.59f628","name":"","x":290,"y":20,"wires":[["fde9ee89.1403f"]]},{"id":"718c97e1.13bc18","type":"inject","z":"f9b48a32.59f628","name":"list","topic":"list","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":90,"y":20,"wires":[["98409ca5.5ce07"]]},{"id":"fde9ee89.1403f","type":"debug","z":"f9b48a32.59f628","name":"admin msg","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":750,"y":20,"wires":[]},{"id":"f27c0efc.39cf4","type":"debug","z":"f9b48a32.59f628","name":"err release","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":750,"y":200,"wires":[]},{"id":"7e5ede70.0512d","type":"Get Connection","z":"f9b48a32.59f628","name":"get connection Monetdb","connection":"bc442b9a.f8d298","autoCommit":"yes","x":330,"y":280,"wires":[["f9f6ce41.e932f"],["9faf66f9.58bf48"]]},{"id":"4b641d65.93fb84","type":"inject","z":"f9b48a32.59f628","name":"","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":100,"y":280,"wires":[["7e5ede70.0512d"]]},{"id":"f9f6ce41.e932f","type":"cm-statement","z":"f9b48a32.59f628","name":"","connection":"","statement":"select * from tables","onErrorAction":"only","x":460,"y":200,"wires":[["9d96963a.54d138"],["9d96963a.54d138","29fde23f.1d0e9e"]]},{"id":"e666ada3.06374","type":"inject","z":"f9b48a32.59f628","name":"fail with no connection","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":140,"y":200,"wires":[["f9f6ce41.e932f"]]},{"id":"c2499215.9948d","type":"debug","z":"f9b48a32.59f628","name":"msg 2","active":false,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":730,"y":140,"wires":[]},{"id":"40f19aa.5b79e64","type":"Load Injector","z":"f9b48a32.59f628","name":"load test for 10 seconds","thinktimemin":"10","thinktimemax":"10","runtime":"10","payload":"","payloadType":"date","x":150,"y":360,"wires":[["7e5ede70.0512d"]]},{"id":"62cd8163.592da","type":"Get Connection","z":"f9b48a32.59f628","name":"get connection postgres","connection":"839a528e.ddd6e","autoCommit":"no","x":330,"y":420,"wires":[["6dc4c046.3204d"],["9d96963a.54d138"]]},{"id":"fe75408b.0f289","type":"inject","z":"f9b48a32.59f628","name":"","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":100,"y":420,"wires":[["62cd8163.592da"]]},{"id":"29fde23f.1d0e9e","type":"debug","z":"f9b48a32.59f628","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":730,"y":260,"wires":[]},{"id":"6dc4c046.3204d","type":"cm-statement","z":"f9b48a32.59f628","name":"","connection":"","statement":"select * from pg_tables","onErrorAction":"only","x":560,"y":360,"wires":[["9d96963a.54d138"],["9d96963a.54d138"]]},{"id":"8cc5dc14.e2913","type":"Load Injector","z":"f9b48a32.59f628","name":"load test for 10 seconds","thinktimemin":"10","thinktimemax":"10","runtime":"10","payload":"","payloadType":"date","x":150,"y":500,"wires":[["62cd8163.592da"]]},{"id":"bcc837e2.483108","type":"inject","z":"f9b48a32.59f628","name":"Release Stale","topic":"releasestale","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":110,"y":80,"wires":[["98409ca5.5ce07"]]},{"id":"bc442b9a.f8d298","type":"Connection Manager","z":"","name":"demo","driver":"monetdb","host":"localhost","port":"50000","dbname":"demo","poolsize":"10"},{"id":"839a528e.ddd6e","type":"Connection Manager","z":"","name":"postgres","driver":"pg","host":"localhost","port":"5432","dbname":"postgres","poolsize":"10"}]
+[
+    {
+        "id": "cfb6f84d.376818",
+        "type": "tab",
+        "label": "CM Test",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "7050a051.3cca6",
+        "type": "tab",
+        "label": "CM Admin",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "9e8e56ef.7511f8",
+        "type": "tab",
+        "label": "neo4j",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "4b4874ca.31f4fc",
+        "type": "Connection Manager",
+        "z": "",
+        "name": "demo",
+        "driver": "monetdb",
+        "host": "localhost",
+        "port": "50000",
+        "dbname": "demo",
+        "poolsize": "10"
+    },
+    {
+        "id": "1565517d.c5865f",
+        "type": "Connection Manager",
+        "z": "",
+        "name": "postgres",
+        "driver": "pg",
+        "host": "localhost",
+        "port": "5432",
+        "dbname": "postgres",
+        "poolsize": "20"
+    },
+    {
+        "id": "53db27bc.60b1c8",
+        "type": "Connection Manager",
+        "z": "",
+        "name": "neo4j",
+        "driver": "neo4j",
+        "host": "localhost",
+        "port": "7474",
+        "dbname": "",
+        "poolsize": "10"
+    },
+    {
+        "id": "679b2274.04b67c",
+        "type": "Get Connection",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "connection": "4b4874ca.31f4fc",
+        "autoCommit": "no",
+        "x": 360,
+        "y": 140,
+        "wires": [
+            [
+                "32d1c656.81807a"
+            ],
+            [
+                "cbb52972.cb1108"
+            ]
+        ]
+    },
+    {
+        "id": "cbb52972.cb1108",
+        "type": "debug",
+        "z": "cfb6f84d.376818",
+        "name": "err",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 790,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "e7a36593.67fa48",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "test connection",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 180,
+        "y": 140,
+        "wires": [
+            [
+                "679b2274.04b67c"
+            ]
+        ]
+    },
+    {
+        "id": "32d1c656.81807a",
+        "type": "Release Connections",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "rollback": "no",
+        "x": 840,
+        "y": 140,
+        "wires": [
+            [
+                "b854ac1a.37f7b"
+            ],
+            [
+                "c50667e.17a5998"
+            ]
+        ]
+    },
+    {
+        "id": "c50667e.17a5998",
+        "type": "debug",
+        "z": "cfb6f84d.376818",
+        "name": "err release",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1090,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "4a5a5afd.bd68f4",
+        "type": "Get Connection",
+        "z": "cfb6f84d.376818",
+        "name": "get connection Monetdb",
+        "connection": "4b4874ca.31f4fc",
+        "autoCommit": "yes",
+        "x": 390,
+        "y": 280,
+        "wires": [
+            [
+                "cf11c60e.7f94b8"
+            ],
+            [
+                "cbb52972.cb1108"
+            ]
+        ]
+    },
+    {
+        "id": "826cab89.4afb88",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 160,
+        "y": 280,
+        "wires": [
+            [
+                "4a5a5afd.bd68f4"
+            ]
+        ]
+    },
+    {
+        "id": "cf11c60e.7f94b8",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "test list tables",
+        "connection": "",
+        "arraySource": "",
+        "param": "none",
+        "mapping": [],
+        "statement": "select * from tables",
+        "prepare": "no",
+        "logError": "no",
+        "onErrorAction": "only",
+        "errorFlag": 0,
+        "x": 520,
+        "y": 200,
+        "wires": [
+            [
+                "32d1c656.81807a"
+            ],
+            [
+                "32d1c656.81807a",
+                "4f9f8acf.197ed4"
+            ]
+        ]
+    },
+    {
+        "id": "7bbd166e.04fda8",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "fail with no connection",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 200,
+        "y": 200,
+        "wires": [
+            [
+                "cf11c60e.7f94b8"
+            ]
+        ]
+    },
+    {
+        "id": "b854ac1a.37f7b",
+        "type": "debug",
+        "z": "cfb6f84d.376818",
+        "name": "OK",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1070,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ae48dedb.93c2",
+        "type": "Load Injector",
+        "z": "cfb6f84d.376818",
+        "name": "load test for 10 seconds",
+        "thinktimemin": "10",
+        "thinktimemax": "10",
+        "runtime": "10",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 360,
+        "wires": [
+            [
+                "4a5a5afd.bd68f4"
+            ]
+        ]
+    },
+    {
+        "id": "481978bc.c1e938",
+        "type": "Get Connection",
+        "z": "cfb6f84d.376818",
+        "name": "get connection postgres",
+        "connection": "1565517d.c5865f",
+        "autoCommit": "no",
+        "x": 390,
+        "y": 420,
+        "wires": [
+            [
+                "8a554a55.933458"
+            ],
+            [
+                "32d1c656.81807a"
+            ]
+        ]
+    },
+    {
+        "id": "60b2690e.66c638",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 160,
+        "y": 420,
+        "wires": [
+            [
+                "481978bc.c1e938"
+            ]
+        ]
+    },
+    {
+        "id": "4f9f8acf.197ed4",
+        "type": "debug",
+        "z": "cfb6f84d.376818",
+        "name": "Debug Msg",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1090,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "c7d2a7d2.36d478",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "test list tables",
+        "connection": "",
+        "arraySource": "",
+        "param": "none",
+        "mapping": [],
+        "statement": "select * from pg_tables",
+        "prepare": "no",
+        "logError": "yes",
+        "onErrorAction": "only",
+        "errorFlag": 0,
+        "x": 680,
+        "y": 360,
+        "wires": [
+            [
+                "32d1c656.81807a"
+            ],
+            [
+                "32d1c656.81807a"
+            ]
+        ]
+    },
+    {
+        "id": "39686363.10ac6c",
+        "type": "Load Injector",
+        "z": "cfb6f84d.376818",
+        "name": "load test for 10 seconds",
+        "thinktimemin": "10",
+        "thinktimemax": "10",
+        "runtime": "10",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 500,
+        "wires": [
+            [
+                "481978bc.c1e938"
+            ]
+        ]
+    },
+    {
+        "id": "11da31a9.f5530e",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "array mapping",
+        "topic": "arraymapping",
+        "payload": "[[1,\"testa\"],[2,\"testb\"],[3,\"testc\"]]",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 170,
+        "y": 600,
+        "wires": [
+            [
+                "481978bc.c1e938"
+            ]
+        ]
+    },
+    {
+        "id": "b101ef6b.dc1cc",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "test mapping array",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "arraymapping",
+        "mapping": [
+            "1",
+            "0",
+            "-1"
+        ],
+        "statement": "select * from (values(cast(? as varchar(32)),cast(? as bigint),cast(? as varchar(32)))) \nas n(id,text,topic)",
+        "prepare": "yes",
+        "logError": "yes",
+        "onErrorAction": "only",
+        "errorFlag": 0,
+        "x": 790,
+        "y": 460,
+        "wires": [
+            [
+                "32d1c656.81807a",
+                "cb85b7e1.d698e8"
+            ],
+            [
+                "32d1c656.81807a"
+            ]
+        ]
+    },
+    {
+        "id": "8a554a55.933458",
+        "type": "switch",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "arraymapping",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "mapping",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "error",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 570,
+        "y": 580,
+        "wires": [
+            [
+                "b101ef6b.dc1cc"
+            ],
+            [
+                "8e2efba0.6e1ee8"
+            ],
+            [
+                "e5cede99.1a312"
+            ],
+            [
+                "c7d2a7d2.36d478"
+            ]
+        ]
+    },
+    {
+        "id": "cb85b7e1.d698e8",
+        "type": "debug",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 1090,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "8e2efba0.6e1ee8",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "test mapping ",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "mapping",
+        "mapping": [
+            "msg.payload[1]",
+            "msg.payload[0]",
+            "\"fixed\""
+        ],
+        "statement": "select * from (values(cast(? as varchar(32)) ,cast(? as bigint) ,cast(? as varchar(32)) )) \nas n(cell1,cell0,fixed)",
+        "prepare": "yes",
+        "logError": "yes",
+        "onErrorAction": "only",
+        "errorFlag": 0,
+        "x": 770,
+        "y": 520,
+        "wires": [
+            [
+                "cb85b7e1.d698e8",
+                "32d1c656.81807a"
+            ],
+            [
+                "32d1c656.81807a"
+            ]
+        ]
+    },
+    {
+        "id": "672b3a45.997e54",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "mapping",
+        "topic": "mapping",
+        "payload": "[1,\"testa\"]",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 160,
+        "y": 640,
+        "wires": [
+            [
+                "481978bc.c1e938"
+            ]
+        ]
+    },
+    {
+        "id": "ce65b04e.f1a46",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "Test Error",
+        "topic": "error",
+        "payload": "[1,\"testa\"]",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 160,
+        "y": 680,
+        "wires": [
+            [
+                "481978bc.c1e938"
+            ]
+        ]
+    },
+    {
+        "id": "e5cede99.1a312",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "deliberate error",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "none",
+        "mapping": [],
+        "statement": "invalid statement to cause error",
+        "prepare": "no",
+        "logError": "yes",
+        "onErrorAction": "onlyWithRelease",
+        "errorFlag": 0,
+        "x": 780,
+        "y": 600,
+        "wires": [
+            [],
+            [
+                "cb85b7e1.d698e8"
+            ]
+        ]
+    },
+    {
+        "id": "1697ea1e.3f8586",
+        "type": "Get Connection",
+        "z": "cfb6f84d.376818",
+        "name": "",
+        "connection": "53db27bc.60b1c8",
+        "autoCommit": "yes",
+        "x": 340,
+        "y": 740,
+        "wires": [
+            [
+                "ce2e57a6.547748"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "ce2e57a6.547748",
+        "type": "cm-statement",
+        "z": "cfb6f84d.376818",
+        "name": "neoj4 run",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "msg.payload",
+        "mapping": [],
+        "statement": "CREATE (a:Person {name: $name}) RETURN a",
+        "prepare": "no",
+        "logError": "yes",
+        "onErrorAction": "terminate",
+        "errorFlag": 0,
+        "x": 580,
+        "y": 740,
+        "wires": [
+            [
+                "cb85b7e1.d698e8"
+            ],
+            [
+                "cb85b7e1.d698e8"
+            ]
+        ]
+    },
+    {
+        "id": "d07ce6d4.dec058",
+        "type": "inject",
+        "z": "cfb6f84d.376818",
+        "name": "test  neo4j",
+        "topic": "",
+        "payload": "{\"name\": \"Alice\"}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 160,
+        "y": 740,
+        "wires": [
+            [
+                "1697ea1e.3f8586"
+            ]
+        ]
+    },
+    {
+        "id": "efba2b9a.0bf7d8",
+        "type": "inject",
+        "z": "7050a051.3cca6",
+        "name": "list",
+        "topic": "list",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 90,
+        "y": 40,
+        "wires": [
+            [
+                "d8a23ab.54d86c8"
+            ]
+        ]
+    },
+    {
+        "id": "d6be52d4.500a6",
+        "type": "inject",
+        "z": "7050a051.3cca6",
+        "name": "Release Stale",
+        "topic": "releasestale",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 80,
+        "wires": [
+            [
+                "d8a23ab.54d86c8"
+            ]
+        ]
+    },
+    {
+        "id": "e052c6e.f48df38",
+        "type": "inject",
+        "z": "7050a051.3cca6",
+        "name": "toggleDebug",
+        "topic": "toggleDebug",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 160,
+        "wires": [
+            [
+                "d8a23ab.54d86c8"
+            ]
+        ]
+    },
+    {
+        "id": "d8a23ab.54d86c8",
+        "type": "Admin Connections",
+        "z": "7050a051.3cca6",
+        "name": "",
+        "x": 330,
+        "y": 40,
+        "wires": [
+            [
+                "44c2f28f.57361c"
+            ]
+        ]
+    },
+    {
+        "id": "44c2f28f.57361c",
+        "type": "debug",
+        "z": "7050a051.3cca6",
+        "name": "admin msg",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 550,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "7f2d026d.4cc2ec",
+        "type": "inject",
+        "z": "7050a051.3cca6",
+        "name": "releaseFree",
+        "topic": "releaseFree",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 120,
+        "wires": [
+            [
+                "d8a23ab.54d86c8"
+            ]
+        ]
+    },
+    {
+        "id": "d0856875.0b94d8",
+        "type": "inject",
+        "z": "9e8e56ef.7511f8",
+        "name": "test  neo4j",
+        "topic": "",
+        "payload": "{\"name\": \"Alice\"}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 40,
+        "wires": [
+            [
+                "7331a242.292a0c"
+            ]
+        ]
+    },
+    {
+        "id": "7331a242.292a0c",
+        "type": "Get Connection",
+        "z": "9e8e56ef.7511f8",
+        "name": "",
+        "connection": "53db27bc.60b1c8",
+        "autoCommit": "yes",
+        "x": 360,
+        "y": 60,
+        "wires": [
+            [
+                "16e8e00a.befbe"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "7adbf3b3.63f48c",
+        "type": "cm-statement",
+        "z": "9e8e56ef.7511f8",
+        "name": "neoj4 run",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "msg.payload",
+        "mapping": [],
+        "statement": "CREATE (a:Person {name: $name}) RETURN a",
+        "prepare": "no",
+        "logError": "yes",
+        "onErrorAction": "terminate",
+        "errorFlag": 0,
+        "x": 340,
+        "y": 280,
+        "wires": [
+            [
+                "2e57baa3.7cf106"
+            ],
+            [
+                "2e57baa3.7cf106"
+            ]
+        ]
+    },
+    {
+        "id": "68d9e8c2.fea1c8",
+        "type": "debug",
+        "z": "9e8e56ef.7511f8",
+        "name": "ok",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 690,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "16e8e00a.befbe",
+        "type": "switch",
+        "z": "9e8e56ef.7511f8",
+        "name": "",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "dbms.procedures()",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 130,
+        "y": 280,
+        "wires": [
+            [
+                "5c4a4311.e49b4c"
+            ],
+            [
+                "7adbf3b3.63f48c"
+            ]
+        ]
+    },
+    {
+        "id": "5c4a4311.e49b4c",
+        "type": "cm-statement",
+        "z": "9e8e56ef.7511f8",
+        "name": "dbms.procedures()",
+        "connection": "",
+        "arraySource": "msg.payload",
+        "param": "none",
+        "mapping": [],
+        "statement": "call dbms.procedures()",
+        "prepare": "no",
+        "logError": "yes",
+        "onErrorAction": "terminate",
+        "errorFlag": 0,
+        "x": 370,
+        "y": 200,
+        "wires": [
+            [
+                "2e57baa3.7cf106"
+            ],
+            [
+                "2e57baa3.7cf106"
+            ]
+        ]
+    },
+    {
+        "id": "a8ea7503.30c258",
+        "type": "debug",
+        "z": "9e8e56ef.7511f8",
+        "name": "err",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 690,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "102022ac.793ccd",
+        "type": "inject",
+        "z": "9e8e56ef.7511f8",
+        "name": "dbms.procedures()",
+        "topic": "dbms.procedures()",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "7331a242.292a0c"
+            ]
+        ]
+    },
+    {
+        "id": "2e57baa3.7cf106",
+        "type": "Release Connections",
+        "z": "9e8e56ef.7511f8",
+        "name": "",
+        "rollback": "no",
+        "x": 620,
+        "y": 240,
+        "wires": [
+            [
+                "68d9e8c2.fea1c8"
+            ],
+            [
+                "a8ea7503.30c258"
+            ]
+        ]
+    }
+]

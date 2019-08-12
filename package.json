@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "Node-RED implements generalised connections manager.",
   "dependencies": {
-    "monetdb": "*"
   },
   "devDependencies": {},
   "scripts": {
@@ -19,10 +18,12 @@
     "manager",
     "sql",
     "uow",
-    "transactiinal",
+    "transactional",
+    "db2",
     "postgres",
     "postgressql",
     "monetdb",
+    "neo4j",
     "database"
   ],
   "node-red": {

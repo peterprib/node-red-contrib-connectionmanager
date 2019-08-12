@@ -14,6 +14,8 @@
         <select id="node-config-input-driver">
             <option value="monetdb">MonetDB</option>
             <option value="pg">Postgresql</option>
+            <option value="neo4j">neo4j</option>
+            <option value="db2">Db2</option>
         </select>
     </div>
 
@@ -62,8 +64,8 @@
             poolsize: {value:10 ,required:true}
         },
         credentials: {
-            user: {value:'' ,required:false},
-            password: {type:'password' ,required:false }
+            user: {type:'text'},
+            password: {type:'password'}
         },
         label: function() {
             return this.name||(this.driver+"/"+this.host+(+this.port?":"+this.port:"")+(this.dbname?"/"+this.dbname:""));
