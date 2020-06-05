@@ -1,5 +1,6 @@
-const ts=(new Date().toString()).split(' ');
-console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] get-connection Copyright 2019 Jaroslav Peter Prib");
+const logger = new (require("node-red-contrib-logger"))("Get Connection");
+logger.sendInfo("Copyright 2020 Jaroslav Peter Prib");
+
 function connectionName(node) {
 	if(node.connectionNode) {
 		try{
@@ -55,5 +56,5 @@ module.exports = function(RED) {
         	]);
         });
     }
-    RED.nodes.registerType("Get Connection",GetConnectionNode);
+    RED.nodes.registerType(logger.label,GetConnectionNode);
 };

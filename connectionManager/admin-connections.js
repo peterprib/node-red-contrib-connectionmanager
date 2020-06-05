@@ -1,5 +1,6 @@
-const ts=(new Date().toString()).split(' ');
-console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] admin-connection Copyright 2019 Jaroslav Peter Prib");
+const logger = new (require("node-red-contrib-logger"))("Admin Connections");
+logger.sendInfo("Copyright 2020 Jaroslav Peter Prib");
+
 module.exports = function(RED) {
     function AdminConnectionNode(n) {
         RED.nodes.createNode(this,n);
@@ -61,5 +62,5 @@ module.exports = function(RED) {
 			node.send(msg);
         });
     }
-    RED.nodes.registerType("Admin Connections",AdminConnectionNode);
+    RED.nodes.registerType(logger.label,AdminConnectionNode);
 };

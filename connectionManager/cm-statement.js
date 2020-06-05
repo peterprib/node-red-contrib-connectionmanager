@@ -1,3 +1,6 @@
+const logger = new (require("node-red-contrib-logger"))("cm-statement");
+logger.sendInfo("Copyright 2020 Jaroslav Peter Prib");
+
 const ts=(new Date().toString()).split(' ');
 console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] cm-statement Copyright 2019 Jaroslav Peter Prib");
 
@@ -22,8 +25,11 @@ function processArray(node,msg,source,index) {
 		return;
 	}
 	try{
+		msg.cm.requestTS={before:new Date()};
 		msg.cm.query.apply(node,[msg,node.connection,node.statement,node.mappingCompiled.apply(node,[node,msg,source[index]]),
 			(result)=>{
+				msg.cm.requestTS.after=new Date();
+				msg.cm.requestTS.elapse=msg.requestTS.after-msg.requestTS.before;
 				msg.result.push(result);
 				processArray.apply(this,[node,msg,source,++index]);
 				if(!node.sqlok) {
@@ -32,7 +38,8 @@ function processArray(node,msg,source,index) {
 				}
 			},			
 			(result,err)=>{
-				msg.result.push(result);
+				msg.cm.requestTS.after=new Date();
+				msg.cm.requestTS.elapse=msg.requestTS.after-msg.requestTS.before;				msg.result.push(result);
 				msg.error=msg.error||[];
 				msg.error[index]=err;
 				if(node.isLogError) node.error(JSON.stringify(err));
@@ -104,7 +111,7 @@ module.exports = function(RED) {
    			case 'arraymapping': 
 				let paramText="(node,msg,r)=>{ return [";
    				try{
-	   				node.getArraySource=eval("(node,msg)=>{return "+node.arraySource+";}");
+	   				node.getArraySource=eval("(node,msg,flow,global,env)=>{return "+node.arraySource+";}");
 		   			node.mapping.forEach((c)=>{
 		   				if(c==-1) {
 		   					paramText+="msg.topic,";
@@ -141,6 +148,17 @@ module.exports = function(RED) {
     	if(node.prepareSQL) {
 			node.status({ fill: 'yellow', shape: 'ring', text: "Prepare not initialized" });
     	}
+    	
+        node.flow={
+            get:(()=>node.context().flow.get.apply(node,arguments))
+        };
+        node.global={
+            get:()=>(node.context().global.get.apply(node,arguments))
+        };
+        node.env={
+            get:((envVar)=>node._flow.getSetting(envVar))
+        };
+    	
        	node.on('input', function (msg) {
        		if(!msg.cm) {
        			msg.error="no connections established by previous nodes";
@@ -151,7 +169,7 @@ module.exports = function(RED) {
        			msg.result=[];
        			delete msg.error;
        			try{
-       				processArray.apply(this,[node,msg,node.getArraySource(node,msg),0]);
+       				processArray.apply(this,[node,msg,node.getArraySource(node,msg,node.flow,node.global,node.env),0]);
        			} catch(e) {
 					msg.error=e.toString();
 					if(node.isLogError) node.error(e.toString());
@@ -180,5 +198,5 @@ module.exports = function(RED) {
        		]);
        	});
     }
-    RED.nodes.registerType("cm-statement",cmStatementNode);
+    RED.nodes.registerType(logger.label,cmStatementNode);
 };

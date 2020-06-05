@@ -1,3 +1,6 @@
+const logger = new (require("node-red-contrib-logger"))("Release Connections");
+logger.sendInfo("Copyright 2020 Jaroslav Peter Prib");
+
 const ts=(new Date().toString()).split(' ');
 console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] release-connection Copyright 2019 Jaroslav Peter Prib");
 module.exports = function(RED) {
@@ -22,5 +25,5 @@ module.exports = function(RED) {
         	}
         });
     }
-    RED.nodes.registerType("Release Connections",ReleaseConnectionNode);
+    RED.nodes.registerType(logger.label,ReleaseConnectionNode);
 };
