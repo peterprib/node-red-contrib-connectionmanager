@@ -127,6 +127,8 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
+0.0.3 fix bug with error handling and arrays.  Add pg in to package dependencies.  More debug details.
+
 0.0.2 get rid of monetdb warning.  Add in access to flow.get env.get, global.get
 
 0.0.1 base
