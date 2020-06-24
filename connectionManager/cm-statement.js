@@ -24,7 +24,7 @@ function processArray(node,msg,source,index) {
 			(result)=>{
 				if(logger.active) logger.send({label:"processArray query result",msg:msg._msgid});
 				msg.cm.requestTS.after=new Date();
-				msg.cm.requestTS.elapse=msg.requestTS.after-msg.requestTS.before;
+				msg.cm.requestTS.elapse=msg.cm.requestTS.after-msg.cm.requestTS.before;
 				msg.result.push(result);
 				processArray.apply(this,[node,msg,source,++index]);
 			},			
