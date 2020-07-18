@@ -127,6 +127,8 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
+0.0.5 fix bug with postgresql when parameters > 9.
+
 0.0.4 fix bug on statement.
 
 0.0.3 fix bug with error handling and arrays.  Add pg in to package dependencies.  More debug details.
