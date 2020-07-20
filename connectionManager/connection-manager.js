@@ -758,7 +758,7 @@ let DriverType = {
 			autoCommit:true,
 			prepareIsQuery:true,
 			translateSQL:function(sql) {
-				return sql.split('?').reduce((a,c,i)=>a+="$"+(i+1)+c);;
+				return sql.split('?').reduce((a,c,i)=>a+="$"+i+c);
 			}
 		})
 	};

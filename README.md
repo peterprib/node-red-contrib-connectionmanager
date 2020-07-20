@@ -127,7 +127,7 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
-0.0.5 fix bug with postgresql when parameters > 9.
+0.0.6 fix bug with postgresql when parameters > 9.
 
 0.0.4 fix bug on statement.
 
