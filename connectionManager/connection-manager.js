@@ -500,27 +500,46 @@ Driver.prototype.commitSql=function(pool,conn,done,error) {
 	if(logger.active) logger.send("Driver.commit");
 	this.query(pool,conn,"commit",null,done,error);
 };
-Driver.prototype.getOptions=function(node) {
-	if(logger.active) logger.send("Driver.getOptions "+JSON.stringify(this.optionsMapping));
-	if(!this.options) {
-		this.options=Object.assign({},this.optionsMapping);
-		for(let i in this.optionsMapping ) {
-			try{
-				if(logger.active) logger.send("Driver.getOptions propery "+i+" set to configuration property "+this.optionsMapping[i]);
-				if(node.credentials && node.credentials.hasOwnProperty(this.optionsMapping[i])) {
-					this.options[i]=node.credentials[this.optionsMapping[i]];
-				} else {
-					this.options[i]=node[this.optionsMapping[i]];
+Driver.prototype.Driver=function() {
+	return require(this.requireName).Client;
+};
+function optionsMap(node,options,optionsMapping){
+	for(let i in optionsMapping ) {
+		try{
+			const propertyConfig=optionsMapping[i];
+			if(logger.active) logger.send({label:"optionsMap",propery:i,"configuration property":propertyConfig});
+			if(i === 'options'){
+				if(propertyConfig) {
+					const addOptions=JSON.parse(node.options);
+					if(logger.active) logger.send({label:"optionsMap add options",options:addOptions});
+					Object.assign(options,addOptions);
 				}
-				if(this.options[i]==null) {
-					throw Error("not set but expected");
-				}
-			} catch(e) {
-				node.error("option "+i+" set to configuration property "+this.optionsMapping[i]+" has problem "+e)
-			}
+				continue;
+			} else if(typeof propertyConfig === 'string' || propertyConfig instanceof String){
+				options[i]=(node.credentials && node.credentials.hasOwnProperty(propertyConfig))?
+						node.credentials[propertyConfig]:
+						node[propertyConfig];
+			} else if(Array.isArray(propertyConfig)){
+				options[i]=node[propertyConfig[0]].split(",");
+			} else if(typeof propertyConfig == "object"){
+				options[i]={};
+				optionsMap(node,options[i],propertyConfig)
+				return;
+			} else
+				throw Error("unknown mapping value "+propertyConfig);
+			if(options[i]==null) throw Error("not set but expected");
+		} catch(e) {
+			node.error("option "+i+" set to configuration property "+optionsMapping[i]+" has problem "+e)
 		}
 	}
-	return this.options;
+}
+Driver.prototype.getOptions=function(node) {
+	if(logger.active) logger.send("Driver.getOptions "+JSON.stringify(this.optionsMapping));
+	if(!this.optionsCached) {
+		this.optionsCached={}
+		optionsMap(node,this.optionsCached,this.optionsMapping);
+	}
+	return this.optionsCached;
 };
 Driver.prototype.getConnectionC=function(pool,node,done,error) {
 	try{
@@ -536,7 +555,11 @@ Driver.prototype.getConnectionC=function(pool,node,done,error) {
 			}
 			if(logger.active) logger.send("getConnectionC OK ");
 			if(thisObject.testOnConnect) {
-				thisObject.query(pool,c,thisObject.testOnConnect,null,()=>done(c),error);
+				if(!thisObject.onConnectCache) {
+					const mustache=require("mustache"); 
+					thisObject.onConnectCache=mustache.render(thisObject.testOnConnect,node);
+				}
+				thisObject.query(pool,c,thisObject.onConnectCache,null,()=>done(c),error);
 			} else {
 				done(c);
 			}
@@ -672,6 +695,24 @@ Driver.prototype.queryC=function(pool,conn,sql,params,done,error) {
 		error(e);
 	}
 };
+Driver.prototype.queryCE=function(pool,conn,sql,params,done,error) {
+	if(logger.active) logger.send("Driver.queryC "+JSON.stringify({sql:sql,params:params}));
+	const thisObject=this;
+	try{
+		conn.execute(sql,(params||this.paramNull),(err, result) => {
+			if(err) {
+				if(logger.active) logger.send("Driver.queryC error: "+err);
+				error(err);
+			} else {
+				if(logger.active) logger.send("Driver.queryC first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				done(result);
+			}
+		});
+	} catch(e) {
+		logger.sendError("Driver.queryC error: "+e);
+		error(e);
+	}
+};
 
 Driver.prototype.queryCPG=function(pool,conn,sql,params,done,error) {
 	const thisObject=this,
@@ -734,12 +775,37 @@ Driver.prototype.translateSQL=function(sql) {
 	return sql;
 };
 let DriverType = {
+		'cassandra': new Driver({
+			requireName:'cassandra-driver',
+			query:Driver.prototype.queryCE,
+			beginTransaction:Driver.prototype.beginTransactionNoAction,
+			testOnConnect:"use {{dbname}}",
+			optionsMapping: {
+				options:true,
+				credentials: { username: 'user', password: 'password' },
+				contactPoints: ['host'],
+				localDataCenter: 'port',
+				keyspace: 'dbname'
+			}
+		}),
 		'db2': new Driver({
 			Driver: function() {
 				return require(this.requireName);
 			},
 			requireName:'ibm_db',
 			getConnection: Driver.prototype.getConnectionO
+		}),
+		'dse': new Driver({
+			requireName:'dse-driver',
+			query:Driver.prototype.queryCE,
+			beginTransaction:Driver.prototype.beginTransactionNoAction,
+			testOnConnect:"use {{dbname}}",
+			optionsMapping: {
+				options:true,
+				credentials: { username: 'user', password: 'password' },
+				contactPoints: ['host'],
+				keyspace: 'dbname'
+			}
 		}),
 		'monetdb': new Driver({
 			Driver:(()=>require(this.requireName)({maxReconnects:0,debug:false})),
@@ -777,9 +843,6 @@ let DriverType = {
 			query:Driver.prototype.queryNeo4j
 		}),	
 		'pg': new Driver({
-			Driver: function() {
-				return require(this.requireName).Client;
-			},
 			requireName:'pg',
 			autoCommit:true,
 			prepareIsQuery:true,

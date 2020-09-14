@@ -7,6 +7,12 @@ function Mapping(msg) {
 	this.debug("Mapping out: "+JSON.stringify(params));
 	return params;
 }
+function setMetrics(node,msg) {
+	msg.cm.requestTS.after=new Date();
+	msg.cm.requestTS.elapse=msg.cm.requestTS.after-msg.cm.requestTS.before;
+	node.count++;
+	node.elapse+=msg.cm.requestTS.elapse;
+}
 function processArray(node,msg,source,index) {
 	if(logger.active) logger.send({label:"processArray",msg:msg._msgid});
 	if(index>=source.length) {
@@ -19,19 +25,17 @@ function processArray(node,msg,source,index) {
 		return;
 	}
 	try{
-		msg.cm.requestTS={before:new Date()};
 		msg.cm.query.apply(node,[msg,node.connection,node.statement,node.mappingCompiled.apply(node,[node,msg,source[index]]),
 			(result)=>{
 				if(logger.active) logger.send({label:"processArray query result",msg:msg._msgid});
-				msg.cm.requestTS.after=new Date();
-				msg.cm.requestTS.elapse=msg.cm.requestTS.after-msg.cm.requestTS.before;
+				setMetrics(node,msg);
 				msg.result.push(result);
 				processArray.apply(this,[node,msg,source,++index]);
 			},			
 			(result,err)=>{
 				if(logger.active) logger.send({label:"processArray query error",msg:msg._msgid,error:err});
-				msg.cm.requestTS.after=new Date();
-				msg.cm.requestTS.elapse=msg.cm.requestTS.after-msg.cm.requestTS.before;				msg.result.push(result);
+				setMetrics(node,msg);
+				msg.result.push(result);
 				msg.error=msg.error||[];
 				msg.error[index]=err;
 				if(node.isLogError) node.error(JSON.stringify(err));
@@ -60,20 +64,37 @@ function error(node,msg,result,err) {
 		logger.sendError("query error handling failure "+ex.message);
 	}
 }
+function stringify(error) {
+	return (typeof error==="object"?JSON.stringify(error):error)
+}
 module.exports = function(RED) {
 	function cmStatementNode(n) {
 		RED.nodes.createNode(this,n);
-		var node=Object.assign(this,n);
+		let node=Object.assign(this,n,{count:0,elapse:0});
+		if(node.hasMustache) { 
+			if(node.hasMustacheCached) { 
+				const mustache=require("mustache"); 
+				node.statementCached=mustache.render(node.statement,{node:node});
+				node.getStatement=((node,msg)=>node.statementCached);
+				if(logger.active) logger.send({label:"hasMustacheCached",statementCached:node.statementCached})
+			} else {
+				node.mustache=require("mustache"); 
+				node.getStatement=((node,msg)=>node.mustache.render(node.statement,{node:node,msg:msg}))
+				if(logger.active) logger.send({label:"hasMustache per msg"})
+			}
+   		} else {
+   			node.getStatement=((node,msg)=>node.statement);
+   		}
 		node.prepareSQL=(node.prepare=="yes");
 		node.sqlok=false;
 		node.isLogError=(node.logError=="yes");
 		node.terminate=function(msg) {
-			node.error("Message terminated due to an error", msg);
+			node.error("Message terminated due to an error "+stringify(msg.error), msg);
 			if(msg.cm) {
 				node.error("releasing connections as message terminated");
 				msg.cm.release.apply(node,[msg,
 					()=>{return;},		  // ok
-					(err)=>{node.error(err);}   //error
+					(err)=>{node.error("release error "+stringify(err));}   //error
 				]);
 			}
 		};
@@ -155,7 +176,6 @@ module.exports = function(RED) {
 		if(node.prepareSQL) {
 			node.status({ fill: 'yellow', shape: 'ring', text: "Prepare not initialized" });
 		}
-		
 		node.flow={
 			get:(()=>node.context().flow.get.apply(node,arguments))
 		};
@@ -165,13 +185,13 @@ module.exports = function(RED) {
 		node.env={
 			get:((envVar)=>node._flow.getSetting(envVar))
 		};
-		
 	   	node.on('input', function (msg) {
 	   		if(!msg.cm) {
 	   			msg.error="no connections established by previous nodes";
 	   			node.send([null,msg]);
 	   			return;
 	   		}
+			msg.cm.requestTS={before:new Date()};
 	   		if(node.getArraySource) {  // implies array mapping
 				if(logger.active) logger.send({label:"query array",msg:msg._msgid});
 	   			msg.result=[];
@@ -184,8 +204,9 @@ module.exports = function(RED) {
 	   			return;
 	   		} 
 			if(logger.active) logger.send({label:"query",msg:msg._msgid});
-	   		msg.cm.query.apply(node,[msg,node.connection,node.statement,setParam.apply(node,[node,msg]),
+	   		msg.cm.query.apply(node,[msg,node.connection,node.getStatement(node,msg),setParam.apply(node,[node,msg]),
 				function (result) {
+	   				setMetrics(node,msg);
 					if(logger.active) logger.send({label:"query OK",msg:msg._msgid});
 					msg.result=result;
 					node.send([msg]);
@@ -195,6 +216,7 @@ module.exports = function(RED) {
 					}
 				},
 	   			function(result,err) {
+					setMetrics(node,msg);
 					if(logger.active) logger.send({label:"query error",msg:msg._msgid,error:err});
 					error(node,msg,result,err);
 				}

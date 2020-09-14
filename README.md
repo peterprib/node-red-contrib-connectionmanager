@@ -7,6 +7,8 @@ Tries to enable a common framework for connections which includes common pooling
 
 Currently handles following connection types:
 * postgreSQL
+* Cassandra
+* DataStax 
 * monetdb
 * neo4j
 * db2 (not tested)
@@ -26,10 +28,11 @@ Results in msg.  Note, example is results for neoj4. For relational connections 
 * Connection acquired and used across a series of nodes so transactional UOW can be formed
 * More than once connection can be involved in UOW
 * Releases a connection if it has not been released for a minute.  Cater form work flows that have not properly completed or unexpected error 
-* Works with postgreSQL, neo4j, monetdb and experimental db2.  Note, drivers must be install separately and will be acquired when needed. 
+* Works with postgreSQL, neo4j, monetdb and experimental db2.
 * Simple data mappings
 * Array input for multiple execution of statement.  Useful for bulk loads
 * The one statement and set of values can be sent to multiple connections.
+* Mustache template for statements 
 
 ### Standardisation
 * postgres parameter markers as ? in line with ISO
@@ -67,7 +70,9 @@ All statements executed from get connection can be formed as part of UOW.
 ## Statement
 
 The statement will be executed against connection associated with the message.
-This can be minimized to only one of the connections by detailing the connection name. 
+This can be minimized to only one of the connections by detailing the connection name.
+Mustache template for statements per message or once at node start.  Message has access to msg.<property> values along with node.<property> values.
+This allows some tailoring of statement to cope with variances in DBMS.
 
 ![Statement Node](documentation/statement.JPG "Statement Node")
 
@@ -80,9 +85,16 @@ Valid actions:
 * releaseFree - releases connections from pool that are free
 * toggleDebug - Sends more debug information to system log
 
-In future will be used as a means of dynamically changes certain properties sunch as pool size.
+In future will be used as a means of dynamically changes certain properties such as pool size.
 
 ![Admin Connection Node](documentation/adminConnection.JPG "Admin Connection Node")
+
+## Data-Stax Cloud Connection
+
+Generate the secure-connect zip file from DataStax and update options file as follows:
+
+![Admin Connection DataStax Cloud](documentation/adminConnectionDatastaxCloud.JPG "DatastaxCloud")
+
 
 ------------------------------------------------------------
 
@@ -90,13 +102,11 @@ In future will be used as a means of dynamically changes certain properties sunc
 
 1. Add transactional - option on connection manager and release to have commit/rollback
 * Standardised results format, at moment default of driver
-* Add more DBMS drivers
-* Add NoSQL drivers
-* Performance metrics
+* Access performance metrics
 * Dynamically change size of pool
 * Wait on connection to become free
 * Configurable stale connection cycle
-
+* Specific Mustache properties to allow for DBMS variance, e.g. "limit" vs "fetch first"
 
 ------------------------------------------------------------
 
@@ -105,13 +115,6 @@ In future will be used as a means of dynamically changes certain properties sunc
 Run the following command in the root directory of your Node-RED install
 
     npm install node-red-contrib-connectionmanager
-
-If used 
-
-    npm install pg						postgreSQL
-    npm install neo4j-driver
-    npm install monetdb-nodejs
-    npm install ibm_db				Db2
 
 
 # Tests
@@ -126,6 +129,8 @@ _Note_ The examples will require the drivers to be installed
 ------------------------------------------------------------
 
 # Version
+
+0.1.0 Add DataStax and Cassandra.  Include drivers rather than separate install.  Add limited mustache on statements. Performance metrics.
 
 0.0.7 Use new feature in postgresql to return columns as array
 

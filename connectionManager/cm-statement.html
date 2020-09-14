@@ -68,7 +68,7 @@
         <label for="node-input-arraySource"><i class="fa fa-list-ul"></i> Array Source</label>
         <input type="text" id="node-input-arraySource" size="100">
     </div>
-    
+
     <div class="form-row node-input-param-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
         <label style="vertical-align:top;"><i class="fa fa-list-alt"></i> Parameters </label>
           <div style="width:100%; display: inline-block; background-color:#f3f3f3; border-top:0px solid; border-radius:0 0 0 0; border-bottom:1px solid #ccc;">
@@ -83,10 +83,17 @@
         </div>
          <input type="hidden" id="node-input-errorFlag">
     </div>
+	<div class="form-row">
+		<input type="checkbox" id="node-input-hasMustache" style="display: inline-block; width: auto; vertical-align: top;">
+		<label for="node-input-hasMustache" style="width: auto"> Mustache</label>
+ 	</div>
+	<div class="form-row form-row-http-in-hasMustache show">
+		<input type="checkbox" id="node-input-hasMustacheCached" style="display: inline-block; width: auto; vertical-align: top;">
+		<label for="node-input-hasMustacheCached" style="width: auto"> Mustache Cached</label>
+ 	</div>
+
 </script>
     
-</script>
-
 <script type="text/javascript">
     RED.nodes.registerType('cm-statement',{
         color:"rgb(243, 181, 103)",
@@ -95,6 +102,8 @@
             name: {value:"",required:false},
             connection: {required:false},
             arraySource: {value:"msg.payload",required:false},
+            hasMustache:{value:false},
+            hasMustacheCached:{value:false},
             param: {value:"none",required:true},
             mapping:{value:[]},
             statement: {value:"",required:true},
@@ -114,13 +123,16 @@
         labelStyle: function() {
             return this.name?"node_label_italic":"";
         },
-
         oneditprepare: function() {
             var ace = this;
    			ace.errorFlag = 0;
             $("#node-input-errorFlag").val(0);
             if(!this.mapping) this.mapping=[];
             this.mappingNew=this.mapping.slice();
+            $("#node-input-hasMustache").change(function() {
+            	const hasMustache=this.checked;
+				$(".form-row-http-in-hasMustache")[hasMustache?"show":"hide"]();
+			}).change();
             this.editor = RED.editor.createEditor({
                 id: 'node-input-statement-editor',
                 mode: 'ace/mode/sql',
@@ -140,12 +152,11 @@
                     clearInterval: true
                 }
             });
-            
             this.editor.getSession().on('change', function() {
 	            $("#node-input-statement").val(ace.editor.getValue());
 	            $("#node-input-statement").change();
 			});
-            
+
             $("#node-input-statementlabel").click(function(e) {
                 e.preventDefault();
                 var value = ace.editor.getValue();
@@ -305,6 +316,9 @@
 	<p>
 	Array mappings give access to node, msg, flow.get("aproperty"), global.get("aproperty") and env.get("aproperty")
 	</p>
+	<p>
+	Statement can be subjected to mustache where if cached only occurs once a node start but allow access to node.<property> values.
+	If not cached then per message and access to both node.<property> and msg.<property> values.
     <h3>Inputs</h3>
     <dl class="message-properties">
         <dt>msg <span class="property-type">payload</span></dt>
