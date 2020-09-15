@@ -474,6 +474,15 @@ function Driver(a) {
 		a
 	);
 }
+Driver.prototype.batch=function(pool,conn,done,error) {
+	const batch=conn.batch;
+	if(batch==null) {
+		done();
+		return;
+	}
+	delete conn.batch;
+	this.query(pool,conn,"begin batch "+batch.join(";")+" apply batch;",null,done,error); //cassandra form
+}
 Driver.prototype.beginTransactionNoAction=function(pool,conn,done,error) {
 	if(logger.active) logger.send("Driver.beginTransactionNoAction");
 	done();
@@ -635,6 +644,29 @@ Driver.prototype.getConnectionQ=function(pool,node,done,error) {
 		error(e);
 	}
 };
+Driver.prototype.execC=function(pool,preparedSql,params,done,error) {
+	if(logger.active) logger.send("Driver.execC "+JSON.stringify({params:params}));
+	const thisObject=this;
+	try{
+		preparedSql.exec(params||this.paramNull,
+			(result)=>{
+				if(logger.active) logger.send("Driver.execC first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				done(result);
+			},
+			(err)=>{
+				if(logger.active) logger.send("Driver.execC fail: "+err);
+				try{
+					error(err);
+				} catch(e) {
+					logger.sendError("Driver.execC fail error: "+e+" stack:\n"+e.stack);
+				}
+			}
+		);
+	} catch(e) {
+		logger.sendError("Driver.execC error: "+e);
+		error(e);
+	}
+};
 Driver.prototype.execQ=function(pool,preparedSql,params,done,error) {
 	if(logger.active) logger.send("Driver.execQ "+JSON.stringify({params:params}));
 	const thisObject=this;
@@ -655,6 +687,25 @@ Driver.prototype.execQ=function(pool,preparedSql,params,done,error) {
 		);
 	} catch(e) {
 		logger.sendError("Driver.execQ error: "+e);
+		error(e);
+	}
+};
+Driver.prototype.prepareC=function(pool,conn,sql,done,error) {
+	if(logger.active) logger.send("Driver.prepareC "+JSON.stringify({sql:sql}));
+	const thisObject=this;
+	try{
+		conn.prepare(sql,
+			(prepResult)=>{
+				if(logger.active) logger.send("Driver.prepareC prepared completed");
+				done(prepResult);
+			},
+			(err)=>{
+				if(logger.active) logger.send("Driver.prepareC fail: "+err);
+				error(err);
+			}
+		);
+	} catch(e) {
+		logger.sendError("Driver.prepareC error: "+e);
 		error(e);
 	}
 };
@@ -696,15 +747,15 @@ Driver.prototype.queryC=function(pool,conn,sql,params,done,error) {
 	}
 };
 Driver.prototype.queryCE=function(pool,conn,sql,params,done,error) {
-	if(logger.active) logger.send("Driver.queryC "+JSON.stringify({sql:sql,params:params}));
+	if(logger.active) logger.send("Driver.queryCE "+JSON.stringify({sql:sql,params:params}));
 	const thisObject=this;
 	try{
 		conn.execute(sql,(params||this.paramNull),(err, result) => {
 			if(err) {
-				if(logger.active) logger.send("Driver.queryC error: "+err);
+				if(logger.active) logger.send("Driver.queryCE error: "+err);
 				error(err);
 			} else {
-				if(logger.active) logger.send("Driver.queryC first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				if(logger.active) logger.send("Driver.queryCE first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
 				done(result);
 			}
 		});
@@ -713,28 +764,44 @@ Driver.prototype.queryCE=function(pool,conn,sql,params,done,error) {
 		error(e);
 	}
 };
-
-Driver.prototype.queryCPG=function(pool,conn,sql,params,done,error) {
-	const thisObject=this,
-		query={text:sql,values:(params||this.paramNull)};
-	if(pool.node.columnsAsArray) query.rowMode='array';
-	if(logger.active) logger.send({label:"Driver.queryCOG ",query:query});
+Driver.prototype.queryCEP=function(pool,conn,sql,params,done,error) {
+	if(logger.active) logger.send("Driver.queryCEP "+JSON.stringify({sql:sql,params:params}));
+	const thisObject=this;
 	try{
-		conn.query(query,(err, result) => {
+		conn.execute(sql,(params||this.paramNull),{prepare:true},(err, result) => {
 			if(err) {
-				if(logger.active) logger.send("Driver.queryC error: "+err);
+				if(logger.active) logger.send("Driver.queryCEP error: "+err);
 				error(err);
 			} else {
-				if(logger.active) logger.send("Driver.queryC first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				if(logger.active) logger.send("Driver.queryCEP first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
 				done(result);
 			}
 		});
 	} catch(e) {
-		logger.sendError("Driver.queryC error: "+e);
+		logger.sendError("Driver.queryCEP error: "+e);
+		error(e);
+	}
+};
+Driver.prototype.queryCPG=function(pool,conn,sql,params,done,error) {
+	const thisObject=this,
+		query={text:sql,values:(params||this.paramNull)};
+	if(pool.node.columnsAsArray) query.rowMode='array';
+	if(logger.active) logger.send({label:"Driver.queryCPG ",query:query});
+	try{
+		conn.query(query,(err, result) => {
+			if(err) {
+				if(logger.active) logger.send("Driver.queryCPG error: "+err);
+				error(err);
+			} else {
+				if(logger.active) logger.send("Driver.queryCPG first 100 chars results"+JSON.stringify(result||"<null>").substring(1,100));
+				done(result);
+			}
+		});
+	} catch(e) {
+		logger.sendError("Driver.queryCPG error: "+e);
 		error(e);
 	}
 },
-
 Driver.prototype.queryNeo4j=function(pool,session,cmd,params,done,error) {
 	if(logger.active) logger.send("Driver.queryNeo4j "+JSON.stringify({cmd:cmd,params:params}));
 	try{
@@ -779,7 +846,10 @@ let DriverType = {
 			requireName:'cassandra-driver',
 			query:Driver.prototype.queryCE,
 			beginTransaction:Driver.prototype.beginTransactionNoAction,
+			commit:Driver.prototype.commitNoAction,
 			testOnConnect:"use {{dbname}}",
+			prepareIsQuery:true,
+			query:Driver.prototype.queryCEP,
 			optionsMapping: {
 				options:true,
 				credentials: { username: 'user', password: 'password' },
@@ -799,7 +869,10 @@ let DriverType = {
 			requireName:'dse-driver',
 			query:Driver.prototype.queryCE,
 			beginTransaction:Driver.prototype.beginTransactionNoAction,
+			commit:Driver.prototype.commitNoAction,
 			testOnConnect:"use {{dbname}}",
+			prepareIsQuery:true,
+			query:Driver.prototype.queryCEP,
 			optionsMapping: {
 				options:true,
 				credentials: { username: 'user', password: 'password' },

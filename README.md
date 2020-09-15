@@ -130,6 +130,8 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
+0.1.1 Bug fix commits DataStax and Cassandra as concept doesn't exist
+
 0.1.0 Add DataStax and Cassandra.  Include drivers rather than separate install.  Add limited mustache on statements. Performance metrics.
 
 0.0.7 Use new feature in postgresql to return columns as array
