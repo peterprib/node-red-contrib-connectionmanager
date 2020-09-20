@@ -11,7 +11,7 @@ Currently handles following connection types:
 * DataStax 
 * monetdb
 * neo4j
-* db2 (not tested)
+* db2 
 
 and has been built in a way to readily add more types. 
 Very quick if driver base aligns with deployed type.
@@ -28,14 +28,16 @@ Results in msg.  Note, example is results for neoj4. For relational connections 
 * Connection acquired and used across a series of nodes so transactional UOW can be formed
 * More than once connection can be involved in UOW
 * Releases a connection if it has not been released for a minute.  Cater form work flows that have not properly completed or unexpected error 
-* Works with postgreSQL, neo4j, monetdb and experimental db2.
+* Works with PostgreSQL, neo4j, Cassandra, Db2, Monetdb and DataStax.
 * Simple data mappings
 * Array input for multiple execution of statement.  Useful for bulk loads
-* The one statement and set of values can be sent to multiple connections.
-* Mustache template for statements 
+* The one statement and set of values can be sent to multiple connections
+* Aggregation of results into one form across multiple connections
+* Mustache template for statements
 
 ### Standardisation
 * postgres parameter markers as ? in line with ISO
+* Optional one form of result output regardless of driver type which is aggregated
 
 ## Node Summary
 * Connection Manager - Configuration of connection pool including size 
@@ -71,8 +73,10 @@ All statements executed from get connection can be formed as part of UOW.
 
 The statement will be executed against connection associated with the message.
 This can be minimized to only one of the connections by detailing the connection name.
-Mustache template for statements per message or once at node start.  Message has access to msg.<property> values along with node.<property> values.
+Mustache template for statements per message or once at node start.
+Message has access to msg.<property> values along with node.<property> values.
 This allows some tailoring of statement to cope with variances in DBMS.
+Result can be converted into the one form being array of rows and columns with data aggregated if more than one connection used.
 
 ![Statement Node](documentation/statement.JPG "Statement Node")
 

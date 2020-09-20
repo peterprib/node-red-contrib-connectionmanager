@@ -13,6 +13,36 @@ function setMetrics(node,msg) {
 	node.count++;
 	node.elapse+=msg.cm.requestTS.elapse;
 }
+function query(node,msg,stmt,param) {
+	if(logger.active) logger.send({label:"query",msg:msg._msgid});
+	msg.cm.query.apply(node,[msg,node.connection,stmt,param,
+		function (result) {
+			setMetrics(node,msg);
+			if(logger.active) logger.send({label:"query OK",msg:msg._msgid});
+			try{
+				msg.result=node.commonArrayResult?msg.cm.getResultArray.apply(node,[msg,result]):result;
+			} catch(ex){
+				error(node,msg,null,"getResultArray "+ex.message);
+//				logger.error(ex.stack);
+				return;
+			}
+			node.send([msg]);
+			if(!node.sqlok) {
+				node.status({ fill: 'green', shape: 'ring', text: "OK" });
+				node.sqlok=true;
+			}
+		},
+			function(result,err) {
+			setMetrics(node,msg);
+			if(logger.active) logger.send({label:"query error",msg:msg._msgid,error:err});
+			error(node,msg,result,err);
+		}
+		]);
+}
+function processArrayn(node,msg,statement,source) {
+	const v=source.map((c)=>node.mappingCompiled.apply(node,c));
+	query(node,msg,statement,v);
+}
 function processArray(node,msg,source,index) {
 	if(logger.active) logger.send({label:"processArray",msg:msg._msgid});
 	if(index>=source.length) {
@@ -203,24 +233,7 @@ module.exports = function(RED) {
 	   			}
 	   			return;
 	   		} 
-			if(logger.active) logger.send({label:"query",msg:msg._msgid});
-	   		msg.cm.query.apply(node,[msg,node.connection,node.getStatement(node,msg),setParam.apply(node,[node,msg]),
-				function (result) {
-	   				setMetrics(node,msg);
-					if(logger.active) logger.send({label:"query OK",msg:msg._msgid});
-					msg.result=result;
-					node.send([msg]);
-					if(!node.sqlok) {
-						node.status({ fill: 'green', shape: 'ring', text: "OK" });
-						node.sqlok=true;
-					}
-				},
-	   			function(result,err) {
-					setMetrics(node,msg);
-					if(logger.active) logger.send({label:"query error",msg:msg._msgid,error:err});
-					error(node,msg,result,err);
-				}
-	   		]);
+	   		query(node,msg,node.getStatement(node,msg),setParam.apply(node,[node,msg]));
 	   	});
 	}
 	RED.nodes.registerType(logger.label,cmStatementNode);

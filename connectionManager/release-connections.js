@@ -1,8 +1,6 @@
 const logger = new (require("node-red-contrib-logger"))("Release Connections");
 logger.sendInfo("Copyright 2020 Jaroslav Peter Prib");
 
-const ts=(new Date().toString()).split(' ');
-console.log([parseInt(ts[2],10),ts[1],ts[4]].join(' ')+" - [info] release-connection Copyright 2019 Jaroslav Peter Prib");
 module.exports = function(RED) {
     function ReleaseConnectionNode(n) {
         RED.nodes.createNode(this,n);
@@ -10,10 +8,12 @@ module.exports = function(RED) {
         node.rollbackTransaction=(node.rollback=="yes");
         node.on('input', function (msg) {
         	if(msg.cm) {
+        		if(logger.active) logger.send("input release");
         		msg.cm.release.apply(node,[msg,
         	    	(results)=>node.send([msg]),  // as no errors  results are known 
         	    	(results,errors)=>{
         	           	msg.error=errors||"no error message returned";
+                		logger.send({label:"input release",error:msg.error,results:results});
         	           	node.error(JSON.stringify({error:msg.errors,results:results}));
         	           	node.send([null,msg]);
     					node.status({ fill: 'red', shape: 'ring', text: "Error check log" });
@@ -21,6 +21,7 @@ module.exports = function(RED) {
         	    	}
         	    ]);
         	} else {
+        		if(logger.active) logger.send("input no cm therefore no release");
             	node.send([msg]);
         	}
         });

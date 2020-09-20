@@ -1,88 +1,91 @@
 <script type="text/x-red" data-template-name="cm-statement">
 
-    <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
-
 	<div class="form-row">
-    	<label for="node-input-connection"><i class="fa fa-user"></i> Connection</label>
-    	<input type="text" id="node-input-connection">
+		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+	<div class="form-row">
+		<input type="checkbox" id="node-input-commonArrayResult" style="display: inline-block; width: auto; vertical-align: top;">
+		<label for="node-input-commonArrayResult" style="width: auto"> Result is aggregated array rows and columns</label>
+ 	</div>
+	<div class="form-row">
+		<label for="node-input-connection"><i class="fa fa-user"></i> Connection</label>
+		<input type="text" id="node-input-connection">
   	</div>
 
-    <div class="form-row">
-        <label for="node-input-onErrorAction"><i class="fa fa-list-ul"></i> On error</label>
-        <select id="node-input-onErrorAction">
-            <option value="terminate">Terminate Message</option>
-            <option value="ignore">Ignore </option>
-            <option value="only">Error Output</option>
-            <option value="both">Both</option>
-            <option value="onlyWithRelease">Error Output and release connections</option>
-        </select>
-    </div>
-    
-    <div class="form-row">
-        <label for="node-input-logError"><i class="fa fa-list-ul"></i> Log Error</label>
-        <select id="node-input-logError">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-        </select>
-    </div>
-    
-    <div class="form-row">
-        <label for="node-input-param"><i class="fa fa-list-ul"></i> Parameter Array</label>
-        <select id="node-input-param">
-            <option value="none">None</option>
-            <option value="msg.param">msg.param</option>
-            <option value="msg.payload">msg.payload</option>
-            <option value="mapping">Mapping</option>
-            <option value="arraymapping">Array Mapping</option>
-        </select>
-    </div>
+	<div class="form-row">
+		<label for="node-input-onErrorAction"><i class="fa fa-list-ul"></i> On error</label>
+		<select id="node-input-onErrorAction">
+			<option value="terminate">Terminate Message</option>
+			<option value="ignore">Ignore </option>
+			<option value="only">Error Output</option>
+			<option value="both">Both</option>
+			<option value="onlyWithRelease">Error Output and release connections</option>
+		</select>
+	</div>
+	
+	<div class="form-row">
+		<label for="node-input-logError"><i class="fa fa-list-ul"></i> Log Error</label>
+		<select id="node-input-logError">
+			<option value="no">No</option>
+			<option value="yes">Yes</option>
+		</select>
+	</div>
+	
+	<div class="form-row">
+		<label for="node-input-param"><i class="fa fa-list-ul"></i> Parameter Array</label>
+		<select id="node-input-param">
+			<option value="none">None</option>
+			<option value="msg.param">msg.param</option>
+			<option value="msg.payload">msg.payload</option>
+			<option value="mapping">Mapping</option>
+			<option value="arraymapping">Array Mapping</option>
+		</select>
+	</div>
 
-    <div class="form-row">
-        <label for="node-input-prepare"><i class="fa fa-list-ul"></i> Prepare and Execute</label>
-        <select id="node-input-prepare">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-        </select>
-    </div>
+	<div class="form-row">
+		<label for="node-input-prepare"><i class="fa fa-list-ul"></i> Prepare and Execute</label>
+		<select id="node-input-prepare">
+			<option value="no">No</option>
+			<option value="yes">Yes</option>
+		</select>
+	</div>
 
-    <div class="form-row" style="margin-bottom: 0px;">
-        <label for="" style="width: unset;" id="node-input-statementlabel"><i class="fa fa-edit"></i> Statement</label>
-    </div>
-    
-    <div>
-        <input type="hidden" id="node-input-statement" autofocus="autofocus">
-    </div>
+	<div class="form-row" style="margin-bottom: 0px;">
+		<label for="" style="width: unset;" id="node-input-statementlabel"><i class="fa fa-edit"></i> Statement</label>
+	</div>
+	
+	<div>
+		<input type="hidden" id="node-input-statement" autofocus="autofocus">
+	</div>
 
-    <div class="form-row node-input-mapping-container-row hide>
-        <input type="hidden" id="node-input-mapping">
-    </div>
-    
-    <div class="form-row node-text-editor-row">
-        <div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-input-statement-editor" ></div>
-    </div>
-    
-    <div class="form-row node-input-arraySource-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
-        <label for="node-input-arraySource"><i class="fa fa-list-ul"></i> Array Source</label>
-        <input type="text" id="node-input-arraySource" size="100">
-    </div>
+	<div class="form-row node-input-mapping-container-row hide>
+		<input type="hidden" id="node-input-mapping">
+	</div>
+	
+	<div class="form-row node-text-editor-row">
+		<div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-input-statement-editor" ></div>
+	</div>
+	
+	<div class="form-row node-input-arraySource-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
+		<label for="node-input-arraySource"><i class="fa fa-list-ul"></i> Array Source</label>
+		<input type="text" id="node-input-arraySource" size="100">
+	</div>
 
-    <div class="form-row node-input-param-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
-        <label style="vertical-align:top;"><i class="fa fa-list-alt"></i> Parameters </label>
-          <div style="width:100%; display: inline-block; background-color:#f3f3f3; border-top:0px solid; border-radius:0 0 0 0; border-bottom:1px solid #ccc;">
-	            <table style="width:100%">
- 	              	<tbody id="node-input-param-tbody" stype="display: block; overflow: auto; max-width:800px; max-height: 400px;">
-                		<tr style="padding-left:4px; border-bottom: 1px solid black; background: lightblue; position: sticky; top: 0;">
-                			<td>No</td>
-                			<td>Array offset (-1 = msg.topic)</td>
-                		</tr>
-                	</tbody>
-                </table>
-        </div>
-         <input type="hidden" id="node-input-errorFlag">
-    </div>
+	<div class="form-row node-input-param-container-row hide" style="margin-bottom:0px; width:100%; min-width:520px">
+		<label style="vertical-align:top;"><i class="fa fa-list-alt"></i> Parameters </label>
+		  <div style="width:100%; display: inline-block; background-color:#f3f3f3; border-top:0px solid; border-radius:0 0 0 0; border-bottom:1px solid #ccc;">
+				<table style="width:100%">
+ 				  	<tbody id="node-input-param-tbody" stype="display: block; overflow: auto; max-width:800px; max-height: 400px;">
+						<tr style="padding-left:4px; border-bottom: 1px solid black; background: lightblue; position: sticky; top: 0;">
+							<td>No</td>
+							<td>Array offset (-1 = msg.topic)</td>
+						</tr>
+					</tbody>
+				</table>
+		</div>
+		 <input type="hidden" id="node-input-errorFlag">
+	</div>
 	<div class="form-row">
 		<input type="checkbox" id="node-input-hasMustache" style="display: inline-block; width: auto; vertical-align: top;">
 		<label for="node-input-hasMustache" style="width: auto"> Mustache</label>
@@ -93,155 +96,152 @@
  	</div>
 
 </script>
-    
+	
 <script type="text/javascript">
-    RED.nodes.registerType('cm-statement',{
-        color:"rgb(243, 181, 103)",
-        category: 'Connection Manager',
-        defaults: {
-            name: {value:"",required:false},
-            connection: {required:false},
-            arraySource: {value:"msg.payload",required:false},
-            hasMustache:{value:false},
-            hasMustacheCached:{value:false},
-            param: {value:"none",required:true},
-            mapping:{value:[]},
-            statement: {value:"",required:true},
-            prepare: {value:"no",required:true},
-            logError: {value:"no",required:true},
-            onErrorAction: {value:"terminate",required:true},
-            errorFlag: {value:0,required:true,validate:function(v) {return (v||0)==0;} }
-        },
-        inputs:1,
-        inputLabels: "",
-        outputs:2,
-        outputLabels: ["OK","Error"],
-        icon: "icons8-run-command-48.png",
-        label: function() {
-            return this.name||this._("cm-statement");
-        },
-        labelStyle: function() {
-            return this.name?"node_label_italic":"";
-        },
-        oneditprepare: function() {
-            var ace = this;
+	RED.nodes.registerType('cm-statement',{
+		color:"rgb(243, 181, 103)",
+		category: 'Connection Manager',
+		defaults: {
+			name: {value:"",required:false},
+			connection: {required:false},
+			arraySource: {value:"msg.payload",required:false},
+			commonArrayResult:{value:false},
+			hasMustache:{value:false},
+			hasMustacheCached:{value:false},
+			param: {value:"none",required:true},
+			mapping:{value:[]},
+			statement: {value:"",required:true},
+			prepare: {value:"no",required:true},
+			logError: {value:"no",required:true},
+			onErrorAction: {value:"terminate",required:true},
+			errorFlag: {value:0,required:true,validate:function(v) {return (v||0)==0;} }
+		},
+		inputs:1,
+		inputLabels: "",
+		outputs:2,
+		outputLabels: ["OK","Error"],
+		icon: "icons8-run-command-48.png",
+		label: function() {
+			return this.name||this._("cm-statement");
+		},
+		labelStyle: function() {
+			return this.name?"node_label_italic":"";
+		},
+		oneditprepare: function() {
+			var ace = this;
    			ace.errorFlag = 0;
-            $("#node-input-errorFlag").val(0);
-            if(!this.mapping) this.mapping=[];
-            this.mappingNew=this.mapping.slice();
-            $("#node-input-hasMustache").change(function() {
-            	const hasMustache=this.checked;
+			$("#node-input-errorFlag").val(0);
+			if(!this.mapping) this.mapping=[];
+			this.mappingNew=this.mapping.slice();
+			$("#node-input-hasMustache").change(function() {
+				const hasMustache=this.checked;
 				$(".form-row-http-in-hasMustache")[hasMustache?"show":"hide"]();
 			}).change();
-            this.editor = RED.editor.createEditor({
-                id: 'node-input-statement-editor',
-                mode: 'ace/mode/sql',
-                value: $("#node-input-statement").val(),
-                globals: {
-                    msg:true,
-                    context:true,
-                    RED: true,
-                    util: true,
-                    flow: true,
-                    global: true,
-                    console: true,
-                    Buffer: true,
-                    setTimeout: true,
-                    clearTimeout: true,
-                    setInterval: true,
-                    clearInterval: true
-                }
-            });
-            this.editor.getSession().on('change', function() {
-	            $("#node-input-statement").val(ace.editor.getValue());
-	            $("#node-input-statement").change();
+			this.editor = RED.editor.createEditor({
+				id: 'node-input-statement-editor',
+				mode: 'ace/mode/sql',
+				value: $("#node-input-statement").val(),
+				globals: {
+					msg:true,
+					context:true,
+					RED: true,
+					util: true,
+					flow: true,
+					global: true,
+					console: true,
+					Buffer: true,
+					setTimeout: true,
+					clearTimeout: true,
+					setInterval: true,
+					clearInterval: true
+				}
+			});
+			this.editor.getSession().on('change', function() {
+				$("#node-input-statement").val(ace.editor.getValue());
+				$("#node-input-statement").change();
 			});
 
-            $("#node-input-statementlabel").click(function(e) {
-                e.preventDefault();
-                var value = ace.editor.getValue();
-                RED.editor.editJavaScript({
-                    value: value,
-                    width: "Infinity",
-                    cursor: ace.editor.getCursorPosition(),
-                    mode: "ace/mode/sql",
-                    complete: function(v,cursor) {
-                        ace.editor.setValue(v, -1);
-                        ace.editor.gotoLine(cursor.row+1,cursor.column,false);
-                        setTimeout(function() {
-                            ace.editor.focus();
-                        },300);
-                    }
-                })
-            })
-            function arrayMappingChange() {
-       			ace.mappingNew=[];
-       			$("#node-input-param-tbody").find("input[type='text'] , input[type='number']" ).each(function() {
-       				ace.mappingNew.push($(this).val());
-       			});
-            }
-            function mappingChange() {
-       			ace.mappingNew=[];
-       			ace.errorFlag = 0;
-	            $("#node-input-errorFlag").val(0);
-       			$("#node-input-param-tbody").find("input:text").each(function() {
-       				ace.mappingNew.push($(this).val());
-       				try{
-       					var test=eval("(msg)=>{return "+$(this).val()+";}");
-	            		$(this).css({'backgroundColor':'white'});	
-       				} catch(e) {
-       					ace.errorFlag = 1;
-	            		$("#node-input-errorFlag").val(1);
-	            		$(this).css({'backgroundColor':'red'});	
-       				}
-       			});
-            }
-            $("#node-input-arraySource").change(function () {
-       			try{
-       				var test=eval("(msg)=>{return "+$(this).val()+";}");
-	           		$(this).css({'backgroundColor':'white'});	
-    			} catch(e) {
-    				ace.errorFlag = 1;
-	         		$("#node-input-errorFlag").val(1);
-	           		$(this).css({'backgroundColor':'red'});	
-    			}
-            });
-            $('#node-input-param').change(function () {
-            	let param=$(this).val();
-                if (["arraymapping"].includes(param)) {
-                    $(".node-input-arraySource-container-row").show();
-                    if(($("#node-input-arraySource").val()||"").trim()=="") {
-                    	$("#node-input-arraySource").val("msg.payload");
-                    }
-                } else {
-                    $(".node-input-arraySource-container-row").hide();
-                }
-                if (["mapping","arraymapping"].includes(param)) {
-                    $("#node-input-statement").change();
-                    $(".node-input-param-container-row").show();
-                    if(ace.param==param) {
-    					ace.mappingNew=ace.mapping.slice();
-                    } else {
-	                   ace.mappingNew=[];
-	                }
-                    $("#node-input-statement").change();
-                } else {
-                    $(".node-input-param-container-row").hide();
-                }
-        	});
-            $("#node-input-statement").change(function () {
-                if(!["arraymapping","mapping"].includes($("#node-input-param").val())) {
-                	return;
-                }
+			$("#node-input-statementlabel").click(function(e) {
+				e.preventDefault();
+				var value = ace.editor.getValue();
+				RED.editor.editJavaScript({
+					value: value,
+					width: "Infinity",
+					cursor: ace.editor.getCursorPosition(),
+					mode: "ace/mode/sql",
+					complete: function(v,cursor) {
+						ace.editor.setValue(v, -1);
+						ace.editor.gotoLine(cursor.row+1,cursor.column,false);
+						setTimeout(function() {
+							ace.editor.focus();
+						},300);
+					}
+				})
+			})
+			function arrayMappingChange() {
+	   			ace.mappingNew=[];
+	   			$("#node-input-param-tbody").find("input[type='text'] , input[type='number']" ).each(function() {
+	   				ace.mappingNew.push($(this).val());
+	   			});
+			}
+			function mappingChange() {
+	   			ace.mappingNew=[];
+	   			ace.errorFlag = 0;
+				$("#node-input-errorFlag").val(0);
+	   			$("#node-input-param-tbody").find("input:text").each(function() {
+	   				ace.mappingNew.push($(this).val());
+	   				try{
+	   					var test=eval("(msg)=>{return "+$(this).val()+";}");
+						$(this).css({'backgroundColor':'white'});	
+	   				} catch(e) {
+	   					ace.errorFlag = 1;
+						$("#node-input-errorFlag").val(1);
+						$(this).css({'backgroundColor':'red'});	
+	   				}
+	   			});
+			}
+			$("#node-input-arraySource").change(function () {
+	   			try{
+	   				var test=eval("(msg)=>{return "+$(this).val()+";}");
+			   		$(this).css({'backgroundColor':'white'});	
+				} catch(e) {
+					ace.errorFlag = 1;
+			 		$("#node-input-errorFlag").val(1);
+			   		$(this).css({'backgroundColor':'red'});	
+				}
+			});
+			$('#node-input-param').change(function () {
+				let param=$(this).val();
+				if (["arraymapping"].includes(param)) {
+					$(".node-input-arraySource-container-row").show();
+					if(($("#node-input-arraySource").val()||"").trim()=="") {
+						$("#node-input-arraySource").val("msg.payload");
+					}
+				} else {
+					$(".node-input-arraySource-container-row").hide();
+				}
+				if (["mapping","arraymapping"].includes(param)) {
+					$("#node-input-statement").change();
+					$(".node-input-param-container-row").show();
+					ace.mappingNew=(ace.param==param?ace.mapping.slice():ace.mappingNew=[]);
+					$("#node-input-statement").change();
+				} else {
+					$(".node-input-param-container-row").hide();
+				}
+			});
+			$("#node-input-statement").change(function () {
+				if(!["arraymapping","mapping"].includes($("#node-input-param").val())) {
+					return;
+				}
 				let statement=ace.editor.getValue();
 				let tbody=$("#node-input-param-tbody");
 				let isArrayMapping=["arraymapping"].includes($("#node-input-param").val());
 				$('#node-input-param-tbody tr:gt(0)').remove()
-            	tbody.find('tr').slice(2,-1).remove(); // empty table
+				tbody.find('tr').slice(2,-1).remove(); // empty table
 				for(let p=0,i=0;i<statement.length;i++) {
 					if(statement[i]!=="?") continue;
 					p++;
-	            	let row=$('<tr/>').appendTo(tbody);
+					let row=$('<tr/>').appendTo(tbody);
 					$('<td/>').text(p).appendTo(row); // param no
 					
 					if (isArrayMapping) {
@@ -274,63 +274,63 @@
 				} else {
 					mappingChange();
 				}
-            }).change();
-        },
-        oneditsave: function() {
-            $("#node-input-statement").val(this.editor.getValue());
-            this.editor.destroy();
-            delete this.editor;
-            var same=(this.mapping.length==this.mappingNew.length);
-            if(same) {
-	            for(var i=0;i<=this.mapping.length;i++){
-    	        	if(this.mapping[i]!==this.mappingNew) {
-    	        		same=false;
-    	        	}
-    	        }
-            }
-            if(!same) {
-            	$("#node-input-mapping").val(this.mappingNew);
-            }
-        },
-        oneditcancel: function() {
-            this.editor.destroy();
-            delete this.editor;
-        },
-        oneditresize: function(size) {
-            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
-            var height = $("#dialog-form").height();
-            for (var i=0; i<rows.size(); i++) {
-                height -= $(rows[i]).outerHeight(true);
-            }
-            var editorRow = $("#dialog-form>div.node-text-editor-row");
-            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
-            $(".node-text-editor").css("height",height+"px");
-            if(this.editor) this.editor.resize();
-        }
-    });
+			}).change();
+		},
+		oneditsave: function() {
+			$("#node-input-statement").val(this.editor.getValue());
+			this.editor.destroy();
+			delete this.editor;
+			var same=(this.mapping.length==this.mappingNew.length);
+			if(same) {
+				for(var i=0;i<=this.mapping.length;i++){
+					if(this.mapping[i]!==this.mappingNew) {
+						same=false;
+					}
+				}
+			}
+			if(!same) {
+				$("#node-input-mapping").val(this.mappingNew);
+			}
+		},
+		oneditcancel: function() {
+			this.editor.destroy();
+			delete this.editor;
+		},
+		oneditresize: function(size) {
+			var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+			var height = $("#dialog-form").height();
+			for (var i=0; i<rows.size(); i++) {
+				height -= $(rows[i]).outerHeight(true);
+			}
+			var editorRow = $("#dialog-form>div.node-text-editor-row");
+			height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+			$(".node-text-editor").css("height",height+"px");
+			if(this.editor) this.editor.resize();
+		}
+	});
 
 </script>
 
 <script type="text/x-red" data-help-name="cm-statement">
-    <p>Execute Statement. Can select prepare and exec.  If multiple calls with UOW improves performance.</p>
+	<p>Execute Statement. Can select prepare and exec.  If multiple calls with UOW improves performance.</p>
 	<p>
 	Array mappings give access to node, msg, flow.get("aproperty"), global.get("aproperty") and env.get("aproperty")
 	</p>
 	<p>
 	Statement can be subjected to mustache where if cached only occurs once a node start but allow access to node.<property> values.
 	If not cached then per message and access to both node.<property> and msg.<property> values.
-    <h3>Inputs</h3>
-    <dl class="message-properties">
-        <dt>msg <span class="property-type">payload</span></dt>
-        <dd>incoming message with payload</dd>
-        <dt>msg.param <span class="property-type">param</span></dt>
-        <dd>Can be used to contain parameters to be used against statement</dd>
-    </dl>
-    <h3>Outputs</h3>
-    <dl class="message-properties">
-        <dt>msg <span class="property-type">results</span></dt>
-        <dd>Contains output from connect</dd>
-        <dt>msg <span class="property-type">error</span></dt>
-        <dd>Contains error message if there is a problem</dd>
-    </dl>
+	<h3>Inputs</h3>
+	<dl class="message-properties">
+		<dt>msg <span class="property-type">payload</span></dt>
+		<dd>incoming message with payload</dd>
+		<dt>msg.param <span class="property-type">param</span></dt>
+		<dd>Can be used to contain parameters to be used against statement</dd>
+	</dl>
+	<h3>Outputs</h3>
+	<dl class="message-properties">
+		<dt>msg <span class="property-type">results</span></dt>
+		<dd>Contains output from connect</dd>
+		<dt>msg <span class="property-type">error</span></dt>
+		<dd>Contains error message if there is a problem</dd>
+	</dl>
 </script>
