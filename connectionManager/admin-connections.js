@@ -25,7 +25,7 @@ module.exports = function(RED) {
         			msg.payload=[];
         			RED.nodes.eachNode(function(n) {
         				if(n.type!=="Connection Manager") return;
-        				var cmNode=RED.nodes.getNode(n.id);
+        				let cmNode=RED.nodes.getNode(n.id);
         				if(cmNode) {
             				msg.payload.push(Object.assign({name:n.name,poolsize:cmNode.poolsize},cmNode.connectionPool.getDetails()));
         				} else {
@@ -33,6 +33,27 @@ module.exports = function(RED) {
         				}
         			});
         			break;
+				case 'test':
+        			RED.nodes.eachNode(function(n) {
+        				if(n.type!=="Connection Manager") return;
+        				let cmNode=RED.nodes.getNode(n.id);
+        				if(cmNode) {
+        					node.testConnection(()=>{
+        							const out=Object.assign({},msg,
+        									{payload:{name:n.name,poolsize:cmNode.poolsize}}
+        								);
+        							node.send(out);
+        						},
+        						(err)=>{
+        							const out=Object.assign({},msg,
+        									{error:err,payload:{name:n.name,poolsize:cmNode.poolsize}}
+        								);
+        							logger.error(msg)
+        							node.send(out);
+        						});
+        				}
+        			});
+        			return;
 				case 'toggleDebug':
 					var toggled=false;
         			RED.nodes.eachNode(function(n) {

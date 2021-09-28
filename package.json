@@ -3,32 +3,25 @@
   "version": "0.1.2",
   "description": "Node-RED implements generalised connections manager.",
   "dependencies": {
-    "node-red-contrib-logger": "0.0.4",
-    "pg": "^7.0",
-    "mustache": "*",
     "cassandra-driver": "*",
     "dse-driver": "*",
+    "ibm_db": "*",
     "monetdb": "*",
-    "neo4j-driver": "*",
-    "ibm_db": "*"
+    "mustache": "*",
+    "neo4j-driver-lite": "*",
+    "node-red-contrib-logger": "0.0.4",
+    "pg": "^7.0"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-mocha": "^8.0.0",
-    "eslint-plugin-node": "^11.0.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
+    "bl": ">=1.2.3",
     "mocha": "^8.1.3",
     "node-red": "^1.1.3",
     "node-red-node-test-helper": "*"
   },
   "scripts": {
     "test": "mocha \"test/**/*_spec.js\"",
-    "lint": "eslint --ext .js ./",
-    "lint-fix": "eslint --fix --ext .js ./",
-    "fix": "npm audit fix"
+    "fix": "npm audit fix",
+    "fixforce": "npm audit fix --force"
   },
   "repository": {
     "type": "git",

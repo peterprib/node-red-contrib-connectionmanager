@@ -23,11 +23,11 @@ function connectionProcessorComplete(msg,done,error,results,errors) {
 }
 function connectionProcessor(msg,action,done,error,a1,a2) {
 	if(logger.active) logger.send({label:"connectionProcessor", action:action,a1:a1,a2:a2});
-    msg.cm.running++;
+	msg.cm.running++;
 	let results={},errors;
 	for(let connection in msg.cm.connection) {
 		if(logger.active) logger.send({label:"connectionProcessor",connection: connection});
-	    msg.cm.running++;
+		msg.cm.running++;
 		const c=msg.cm.connection[connection];
 		const pool=getPool(c.pool);
 		pool[action].apply(pool,[c,
@@ -53,8 +53,8 @@ function connectionProcessor(msg,action,done,error,a1,a2) {
 }
 function cmProcessor(msg,action,done,error,a1,a2) {
 	if(logger.active) logger.send({label:"cmProcessor", action:action});
-    if(!msg.cm) {done(); return;}
-    const thisObject=this;
+	if(!msg.cm) {done(); return;}
+	const thisObject=this;
 	stackProcessor.apply(this,[msg,action,
 		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,a1,a2]),
 		()=>connectionProcessor.apply(thisObject,[msg,action,done,error,a1,a2])
@@ -460,54 +460,74 @@ ConnectionPool.prototype.releaseFreeConnections=function() {
 	}
 	if(--running==0) this.node.log("closed free connections");
 }
+ConnectionPool.prototype.test=function(done,error) {
+	if(this.connectionTested) done();
+	this.getConnection(
+			(conn)=>{
+				conn.pool.release(conn.c,()=>{
+						conn.pool.connectionTested=true;
+						done();
+					},
+					error
+				)
+			}
+			,error); 
+}
 
 module.exports = function(RED) {
-    function ConnectionManagerNode(n) {
-        RED.nodes.createNode(this,n);
-        const node=Object.assign(this,n,{port:Number(n.port)});
-        node.connectionPool=new ConnectionPool(node);
-        node.toggleDebug=toggleDebug;
-        Pools[node.name]=node.connectionPool;
-
-        node.setMsg= function(msg,done,error) {
-        	if(!msg.cm) {
-        		const cm={id:node.id,running:0,connection:{},stack:[],
-        			commit:commit,rollback:rollback,release:release,
-        			query:query,batch:batch,getResultArray:getResultArray
-        		};
-            	RED.util.setMessageProperty(msg,"cm",cm);
-            	cm.autoCommit=(node.autoCommit=="yes");
-        	}
-        	node.connectionPool.getConnection(	//getConnectionTransactional
-        		(connection)=>{
-                    msg.cm.connection[node.name]=connection;
-        			if(msg.cm.autoCommit==null){
-        				msg.cm.autoCommit=connection.pool.autoCommit;
-        			} else {
-        				if(msg.cm.autoCommit!==connection.pool.autoCommit) {
-        					node.connectionPool.beginTransaction(connection,done,(err)=>{
-        						error("error with begin transaction "+err);
-        						node.connectionPool.release(connection,()=>{},()=>{});
-        					});
-        					return;
-        				}
-        			}
-                    done();
-        		},
-        		error
-        	);
-        };
-       	node.on("close", function(removed,done) {
-            clearInterval(node.releaseStaleConnections); 
-       		node.connectionPool.close(done);
-       	});
-       	node.releaseStaleConnections = setInterval(function(node) {node.connectionPool.releaseStaleConnections.apply(node.connectionPool)}, 1000*60,node);
+	function ConnectionManagerNode(n) {
+		RED.nodes.createNode(this,n);
+		const node=Object.assign(this,n,{port:Number(n.port)});
+		node.connectionPool=new ConnectionPool(node);
+		node.toggleDebug=toggleDebug;
+		Pools[node.name]=node.connectionPool;
+		node.connectionPool.test(()=>{
+			},(err)=>{
+				node.connectionError=err;
+			});
+		node.testConnection=function(done,error) {
+			if(node.connectionError) error(node.connectionError); 
+			else done();
+		}
+		node.setMsg= function(msg,done,error) {
+			if(!msg.cm) {
+				const cm={id:node.id,running:0,connection:{},stack:[],
+					commit:commit,rollback:rollback,release:release,
+					query:query,batch:batch,getResultArray:getResultArray
+				};
+				RED.util.setMessageProperty(msg,"cm",cm);
+				cm.autoCommit=(node.autoCommit=="yes");
+			}
+			node.connectionPool.getConnection(	//getConnectionTransactional
+				(connection)=>{
+					msg.cm.connection[node.name]=connection;
+					if(msg.cm.autoCommit==null){
+						msg.cm.autoCommit=connection.pool.autoCommit;
+					} else {
+						if(msg.cm.autoCommit!==connection.pool.autoCommit) {
+							node.connectionPool.beginTransaction(connection,done,(err)=>{
+								error("error with begin transaction "+err);
+								node.connectionPool.release(connection,()=>{},()=>{});
+							});
+							return;
+						}
+					}
+					done();
+				},
+				error
+			);
+		};
+	   	node.on("close", function(removed,done) {
+			clearInterval(node.releaseStaleConnections); 
+	   		node.connectionPool.close(done);
+	   	});
+	   	node.releaseStaleConnections = setInterval(function(node) {node.connectionPool.releaseStaleConnections.apply(node.connectionPool)}, 1000*60,node);
    }
    RED.nodes.registerType(logger.label,ConnectionManagerNode,{
 	   credentials: {
-            user: {type: "text"},
-            password: {type: "password"}
-       }
+			user: {type: "text"},
+			password: {type: "password"}
+	   }
    });
 };
 
@@ -515,10 +535,10 @@ function Driver(a) {
 	if(logger.active) logger.send({label:"New Drive ",argument:a});
 	if(!a.optionsMapping) {
 		this.optionsMapping ={
-			host     : "host", 
-			port     : "port", 
+			host	 : "host", 
+			port	 : "port", 
 			database : "dbname", 
-			user     : "user", 
+			user	 : "user", 
 			password : "password"
 		};
 	}
@@ -609,8 +629,8 @@ Driver.prototype.beginTransactionSql=function(pool,conn,done,error) {
 Driver.prototype.beginTransactionCall=function(pool,conn,done,error) {
 	if(logger.active) logger.send("Driver.beginTransactionCall");
 	conn.beginTransaction(function (err) {
-	    if (err) error(err);
-	    else done();
+		if (err) error(err);
+		else done();
 	});
 };
 Driver.prototype.close=function(pool,conn,done,error) {
@@ -633,11 +653,11 @@ Driver.prototype.commitSql=function(pool,conn,done,error) {
 };
 Driver.prototype.commitTransaction=function(pool,conn,done,error) {
 	if(logger.active) logger.send("Driver.commitTransaction");
-    conn.commitTransaction(function (err) {
-    	if(logger.active) logger.send({label:"Driver.commitTransaction processed",error:err});
-        if (err) error(err)
-        else done();
-    });
+	conn.commitTransaction(function (err) {
+		if(logger.active) logger.send({label:"Driver.commitTransaction processed",error:err});
+		if (err) error(err)
+		else done();
+	});
 };
 Driver.prototype.Driver=function() {
 	return require(this.requireName).Client;
@@ -673,9 +693,9 @@ function optionsMap(node,options,optionsMapping){
 	}
 }
 Driver.prototype.getOptions=function(node) {
-	if(logger.active) logger.send("Driver.getOptions "+JSON.stringify(this.optionsMapping));
+	if(logger.active) logger.send("Driver.getOptions "+JSON.stringify(Object.assign({},this.optionsMapping,{password:"***masked"})));
 	if(!this.optionsCached) {
-		this.optionsCached={}
+		this.optionsCached=this.connectOptions||{}
 		optionsMap(node,this.optionsCached,this.optionsMapping);
 	}
 	return this.optionsCached;
@@ -740,10 +760,10 @@ Driver.prototype.getConnectionNeo4j=function(pool,node,done,error) {
 	try{
 		const options=this.getOptions(node);
 		if(logger.active) logger.send("getConnectionNeo4j options "+JSON.stringify(Object.assign({},options)));
-		let neo4j=new this.Driver(),
-			driver=neo4j.driver("bolt://"+options.host+":"+options.host, neo4j.auth.basic(options.user,options.password));
+//		const neo4j=new this.Driver();
+		const neo4j = require('neo4j-driver-lite')
+		const driver=neo4j.driver("bolt://"+options.host+":"+options.host, neo4j.auth.basic(options.user,options.password));
 		if(!driver) throw Error("driver build failed");
-		var session=driver.session();
 		if(this.testOnConnect) {
 			this.query(pool,session,this.testOnConnect,null,()=>done(session),error);
 		} else {
@@ -758,7 +778,8 @@ Driver.prototype.getConnectionQ=function(pool,node,done,error) {
 	try{
 		const options=this.getOptions(node);
 		if(logger.active) logger.send("getConnectionQ options "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
-		let c = new this.Driver(options),
+		const Driver= this.Driver()
+		const c = new Driver(options),
 			thisObject=this;
 		c.connect(options).then(
 			()=>{
@@ -773,9 +794,9 @@ Driver.prototype.getConnectionQ=function(pool,node,done,error) {
 				error(err);
 			}
 		);
-	} catch(e) {
-		logger.sendError("Driver.getConnectionQ error: "+e);
-		error(e);
+	} catch(ex) {
+		logger.sendErrorAndStackDump("Driver.getConnectionQ "+this.requireName+" name "+pool.node.name+" error: "+ex.message,ex);
+		error(ex);
 	}
 };
 Driver.prototype.execC=function(pool,preparedSql,params,done,error) {
@@ -825,8 +846,8 @@ Driver.prototype.execQ=function(pool,preparedSql,params,done,error) {
 /*  set array set size if >1
  ibmdb = require("ibm_db")
  stmt.setAttr(ibmdb.SQL_ATTR_PARAMSET_SIZE, 4, function(err, result) {
-    if(err) { console.log(err); stmt.closeSync(); }
-    else { ... }
+	if(err) { console.log(err); stmt.closeSync(); }
+	else { ... }
 });
 
  */
@@ -1020,10 +1041,10 @@ Driver.prototype.rollback=function(pool,conn,done,error) {
 Driver.prototype.rollbackTransaction=function(pool,conn,done,error) {
 	if(logger.active) logger.send("Driver.rollbackTransaction");
 	this.query(pool,conn,"rollback",null,done,error);
-    conn.rollbackTransaction(function (err) {
-        if (err) error(err)
-        else done();
-    });
+	conn.rollbackTransaction(function (err) {
+		if (err) error(err)
+		else done();
+	});
 };
 Driver.prototype.translateSQL=function(sql) {
 	return sql;
@@ -1075,7 +1096,9 @@ const DriverType = {
 			}
 		}),
 		'monetdb': new Driver({
-			Driver:(()=>require(this.requireName)({maxReconnects:0,debug:false})),
+			Driver:function(){
+				return require(this.requireName)({maxReconnects:0,debug:false});
+			},
 			requireName:'monetdb',
 			autoCommit:true,
 			getConnection: Driver.prototype.getConnectionQ,
@@ -1084,10 +1107,10 @@ const DriverType = {
 			prepare:Driver.prototype.prepareQ,
 			exec:Driver.prototype.execQ,
 			optionsMapping: {
-				host     : "host", 
-				port     : "port", 
+				host	 : "host", 
+				port	 : "port", 
 				dbname   : "dbname", 
-				user     : "user", 
+				user	 : "user", 
 				password : "password"
 			},
 			prepareIsQuery:false,
@@ -1097,10 +1120,9 @@ const DriverType = {
 			]
 		}),
 		'neo4j': new Driver({
-			Driver: function() {
-				return require(this.requireName).v1;
-			},
-			requireName:'neo4j-driver',
+//			Driver:(()=>require(this.requireName).v1),
+			Driver:(()=>require(this.requireName)),
+			requireName:'neo4j-driver-',
 			autoCommit:false,
 			beginTransaction:Driver.prototype.beginTransactionNoAction,
 			commit:Driver.prototype.commitNoAction,
@@ -1110,8 +1132,10 @@ const DriverType = {
 			query:Driver.prototype.queryNeo4j
 		}),	
 		'pg': new Driver({
+//			Driver:(()=>{const { Client } = require('pg'); return Client}),
 			requireName:'pg',
 			autoCommit:true,
+			connectOptions:{"connectionTimeoutMillis": 2000},
 			getResultArray:((r)=>r.rows),
 			prepareIsQuery:true,
 			query:Driver.prototype.queryCPG,
