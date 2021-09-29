@@ -1,33 +1,33 @@
 # [node-red-contrib-connectionmanager][2]
 
 
-[Node-Red][1] generalized connection manager to allow connection pooling and UOW (unit of work) over multiple nodes. 
-Maximizes asynchronous processing which is dependent on driver provider. Some drivers allow for more asynchronous processing. 
+[Node-Red][1] generalized connection manager to allow connection pooling and UOW (unit of work) over multiple nodes.
+Maximizes asynchronous processing which is dependent on driver provider. Some drivers allow for more asynchronous processing.
 Tries to enable a common framework for connections which includes common pooling and minimization of variance in language implementations. For example for SQL alignment with ISO standard.  Should help minimize swap between technologies. Other languages will be evolved as developed.
 
 Currently handles following connection types:
 * postgreSQL
 * Cassandra
-* DataStax 
+* DataStax
 * monetdb
 * neo4j
-* db2 
+* db2
 
-and has been built in a way to readily add more types. 
+and has been built in a way to readily add more types.
 Very quick if driver base aligns with deployed type.
 
 Simple example for neo4j connection
 
 ![General Overview](documentation/generalOverview.JPG "General Overview")
 
-Results in msg.  Note, example is results for neoj4. For relational connections results standardized. In future, will give option of standardised form versus "as per software provider". 
+Results in msg.  Note, example is results for neoj4. For relational connections results standardized. In future, will give option of standardised form versus "as per software provider".
 
 ![General Overview Results](documentation/generalOverviewResults.JPG "General Overview  Results")
 
 ## Features
 * Connection acquired and used across a series of nodes so transactional UOW can be formed
 * More than once connection can be involved in UOW
-* Releases a connection if it has not been released for a minute.  Cater form work flows that have not properly completed or unexpected error 
+* Releases a connection if it has not been released for a minute.  Cater form work flows that have not properly completed or unexpected error
 * Works with PostgreSQL, neo4j, Cassandra, Db2, Monetdb and DataStax.
 * Simple data mappings
 * Array input for multiple execution of statement.  Useful for bulk loads
@@ -40,7 +40,7 @@ Results in msg.  Note, example is results for neoj4. For relational connections 
 * Optional one form of result output regardless of driver type which is aggregated
 
 ## Node Summary
-* Connection Manager - Configuration of connection pool including size 
+* Connection Manager - Configuration of connection pool including size
 * Get Connection - acquires a connection for the work flow
 * Release Connection - releases all connections back to pool
 * Statement - statement to be executed against connection pool or all connection pools
@@ -134,7 +134,7 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
-0.1.2 Bug fix node-red depreciated features on nodes-started, added initial test connection test, timeout for postgresql rather than wait indefinitely
+0.1.3 Bug fix node-red depreciated features on nodes-started, added initial test connection test, timeout for postgresql rather than wait indefinitely
 
 0.1.1 Bug fix commits DataStax and Cassandra as concept doesn't exist
 
