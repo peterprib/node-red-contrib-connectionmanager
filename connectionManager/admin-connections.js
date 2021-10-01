@@ -38,7 +38,7 @@ module.exports = function(RED) {
         				if(n.type!=="Connection Manager") return;
         				let cmNode=RED.nodes.getNode(n.id);
         				if(cmNode) {
-        					node.testConnection(()=>{
+        					cmNode.testConnection(()=>{
         							const out=Object.assign({},msg,
         									{payload:{name:n.name,poolsize:cmNode.poolsize}}
         								);

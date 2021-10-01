@@ -134,6 +134,8 @@ _Note_ The examples will require the drivers to be installed
 
 # Version
 
+0.1.4 Bug fix for bug fix
+
 0.1.3 Bug fix node-red depreciated features on nodes-started, added initial test connection test, timeout for postgresql rather than wait indefinitely
 
 0.1.1 Bug fix commits DataStax and Cassandra as concept doesn't exist

@@ -74,11 +74,11 @@ function query(msg,connection,statement,params,done,error) {
 			return;
 		}
 		const pool=getPool(connector.pool);
-		
+
 		if(logger.active) logger.send({label:"query ",connection:connection,prepare:this.prepareSQL, preparable:pool.preparable});
 		if(this.prepareSQL && pool.preparable) {
 			const node=this;
-			pool.prepare(connector, 
+			pool.prepare(connector,
 				(prepared)=>pool.exec(prepared,done,error,params),
 				(err)=>{
 					if(logger.active) logger.send({label:"query prepare", error:err});
@@ -99,7 +99,7 @@ function query(msg,connection,statement,params,done,error) {
 			params
 		);
 		return;
-	}		
+	}
 	if(logger.active) logger.send("query connection all connections");
 	if(this.prepareSQL) {
 		const node=this;
@@ -143,7 +143,7 @@ function batch(msg,connection,statement,params,done,error) {
 			params
 		);
 		return;
-	}		
+	}
 	if(logger.active) logger.send("query connection all connections");
 	connectionProcessor.apply(this,[msg,"batch",done,error,statement,params]);
 }
@@ -169,7 +169,7 @@ function release(msg,done,error) {
 		cmProcessor.apply(this,[msg,"release",done,error]);
 		return;
 	}
-	const thisObject=this,   
+	const thisObject=this,
 		action=this.rollbackTransaction?"rollback":"commit";
 	cmProcessor.apply(this,[msg,action,
 		()=>{
@@ -229,7 +229,7 @@ function ConnectionPool(node) {
 		logger.sendError("ConnectionPool "+ex.message);
 	}
 }
-ConnectionPool.prototype.batch=function(c,done,error,sql,params) {   
+ConnectionPool.prototype.batch=function(c,done,error,sql,params) {
 	if(logger.active) logger.send({label:"ConnectionPool batch",id:c.id,sql:sql,parms:params,prepareid:prepareid});
 	this.lastUsed[c.id]=new Date();
 	const pool=this;
@@ -298,7 +298,7 @@ ConnectionPool.prototype.error=function(err,callback) {
 	this.lastError=err;
 	callback(err);
 }
-ConnectionPool.prototype.exec=function(c,done,error,id,params) {   
+ConnectionPool.prototype.exec=function(c,done,error,id,params) {
 	if(logger.active) logger.send("ConnectionPool exec connection id: "+c.id+" prepared id: "+id+" params: "+JSON.stringify(params));
 	if(!this.preparable) {
 		this.query(c,done,error,this.prepared[c.id][id],params,id);
@@ -323,7 +323,7 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 		return;
 	}
 	if(logger.active) logger.send("ConnectionPool getConnection create new connection");
-	if(++this.newConnections>this.size) {  // this.pool.length updated too late 
+	if(++this.newConnections>this.size) {  // this.pool.length updated too late
 		connectionPool.error("maximum pool size "+this.size,error);
 		return;
 	}
@@ -347,7 +347,7 @@ ConnectionPool.prototype.getConnection=function(done,error) {
 ConnectionPool.prototype.getDetails=function() {
 	return {connected:this.pool.length,active:this.active.length,free:this.free.length,lastError:this.lastError||'',autoCommit:this.autoCommit};
 }
-ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {   
+ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 	if(logger.active) logger.send("ConnectionPool prepare connection id: "+c.id+" prepare id: "+id+" sql: "+sql);
 	if(this.prepared[c.id]) {
 		if(logger.active) logger.send("ConnectionPool prepare already done");
@@ -377,13 +377,13 @@ ConnectionPool.prototype.prepare=function(c,done,error,sql,id) {
 			pool.prepared[c.id][id]=prepared;
 			if(logger.active) logger.send("ConnectionPool prepared calling done");
 			done(prepared);
-		}, 
+		},
 		(err)=>{
 			if(logger.active) logger.send("ConnectionPool prepare "+err);
 			error(err)
 	});
 };
-ConnectionPool.prototype.query=function(c,done,error,sql,params,prepareid) {   
+ConnectionPool.prototype.query=function(c,done,error,sql,params,prepareid) {
 	if(logger.active) logger.send({label:"ConnectionPool query connection",id:c.id,sql:sql,parms:params,prepareid:prepareid});
 	this.lastUsed[c.id]=new Date();
 	const pool=this;
@@ -424,7 +424,7 @@ ConnectionPool.prototype.rollback=function(c,done,error) {
 		pool.checkDeadConnection(c,err);
 		error(err)
 	});
-} 
+}
 ConnectionPool.prototype.releaseStaleConnections=function() {
 	try{
 		const thisObject=this,
@@ -462,16 +462,22 @@ ConnectionPool.prototype.releaseFreeConnections=function() {
 }
 ConnectionPool.prototype.test=function(done,error) {
 	if(this.connectionTested) done();
+	const thisObject=this;
 	this.getConnection(
 			(conn)=>{
-				conn.pool.release(conn.c,()=>{
-						conn.pool.connectionTested=true;
-						done();
-					},
-					error
-				)
+				try{
+					thisObject.release(conn.c,()=>{
+							conn.pool.connectionTested=true;
+							done();
+						},
+						error
+					)
+				} catch(ex) {
+					logger.sendError("ConnectionPool.test error: "+ex);
+					error(ex);
+				}
 			}
-			,error); 
+			,error);
 }
 
 module.exports = function(RED) {
@@ -486,7 +492,7 @@ module.exports = function(RED) {
 				node.connectionError=err;
 			});
 		node.testConnection=function(done,error) {
-			if(node.connectionError) error(node.connectionError); 
+			if(node.connectionError) error(node.connectionError);
 			else done();
 		}
 		node.setMsg= function(msg,done,error) {
@@ -518,7 +524,7 @@ module.exports = function(RED) {
 			);
 		};
 	   	node.on("close", function(removed,done) {
-			clearInterval(node.releaseStaleConnections); 
+			clearInterval(node.releaseStaleConnections);
 	   		node.connectionPool.close(done);
 	   	});
 	   	node.releaseStaleConnections = setInterval(function(node) {node.connectionPool.releaseStaleConnections.apply(node.connectionPool)}, 1000*60,node);
@@ -535,10 +541,10 @@ function Driver(a) {
 	if(logger.active) logger.send({label:"New Drive ",argument:a});
 	if(!a.optionsMapping) {
 		this.optionsMapping ={
-			host	 : "host", 
-			port	 : "port", 
-			database : "dbname", 
-			user	 : "user", 
+			host	 : "host",
+			port	 : "port",
+			database : "dbname",
+			user	 : "user",
 			password : "password"
 		};
 	}
@@ -562,7 +568,7 @@ function Driver(a) {
 Driver.prototype.batchArrayNotSupported=function(pool,conn,sql,params,done,error,i,results,errors,prepared) {
 	error("Driver "+this.driverName+" doesn't support batch array");
 	if(i && i>params.length) {
-		if(errors) 
+		if(errors)
 		done(results);
 		return
 	} else {
@@ -571,7 +577,7 @@ Driver.prototype.batchArrayNotSupported=function(pool,conn,sql,params,done,error
 			this.driver.prepare(pool,conn,sql,
 				(prepared)=>{
 					this.batchArrayNotSupported(pool,conn,sql,params,done,error,0,results,errors,prepared);
-				}, 
+				},
 				(err)=>{
 					if(logger.active) logger.send("batchArrayNotSupported prepare "+err);
 					error(err);
@@ -700,22 +706,27 @@ Driver.prototype.getOptions=function(node) {
 	}
 	return this.optionsCached;
 };
+
+Driver.prototype.toStringConnection=function(node) {
+	return JSON.stringify(Object.assign({},this.getOptions(node),{password:"***masked"}))
+};
+
 Driver.prototype.getConnectionC=function(pool,node,done,error) {
 	try{
 		const options=this.getOptions(node);
-		if(logger.active) logger.send("getConnectionC options "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
-		const thisObject=this;
-		const c=new (this.Driver())(options);
+		if(logger.active) logger.send("getConnectionC options "+this.toStringConnection(node));
+		const thisObject=this, Driver=this.Driver();
+		const c=new Driver(options);
 		c.connect((err)=>{
 			if(err) {
-				if(logger.active) logger.send("getConnectionC error "+err);
+				if(logger.active) logger.send("getConnectionC options: "+this.toStringConnection(node)+" error "+err);
 				error(err);
 				return;
 			}
 			if(logger.active) logger.send("getConnectionC OK ");
 			if(thisObject.testOnConnect) {
 				if(!thisObject.onConnectCache) {
-					const mustache=require("mustache"); 
+					const mustache=require("mustache");
 					thisObject.onConnectCache=mustache.render(thisObject.testOnConnect,node);
 				}
 				thisObject.query(pool,c,thisObject.onConnectCache,null,()=>done(c),error);
@@ -724,16 +735,16 @@ Driver.prototype.getConnectionC=function(pool,node,done,error) {
 			}
 		});
 	} catch(e) {
-		logger.sendError("Driver.getConnectionC error: "+e);
+		logger.sendError("Driver.getConnectionC options: "+this.toStringConnection(node)+" error: "+e);
 		error(e);
 	}
 };
 Driver.prototype.getConnectionO=function(pool,node,done,error) {
 	try{
 		const options=this.getOptions(node);
-		if(logger.active) logger.send("getConnectionO options "+JSON.stringify(Object.assign({},options,{password:"***masked"})));
+		if(logger.active) logger.send("getConnectionO options "+this.toStringConnection(node));
 		if(!this.driverInstance) this.driverInstance= this.Driver();
-		let thisObject=this,
+		const thisObject=this,
 			connectString="DATABASE="+options.database+";HOSTNAME="+options.host+";UID="+options.user+";PWD="+options.password+";PORT="+options.port+";PROTOCOL=TCPIP";
 //		var ibmdb = require('ibm_db');
 //		ibmdb.open(connectString,(err,conn)=>{
@@ -1107,10 +1118,10 @@ const DriverType = {
 			prepare:Driver.prototype.prepareQ,
 			exec:Driver.prototype.execQ,
 			optionsMapping: {
-				host	 : "host", 
-				port	 : "port", 
-				dbname   : "dbname", 
-				user	 : "user", 
+				host	 : "host",
+				port	 : "port",
+				dbname   : "dbname",
+				user	 : "user",
 				password : "password"
 			},
 			prepareIsQuery:false,
@@ -1130,12 +1141,12 @@ const DriverType = {
 			testOnConnect:null,
 			getConnection: Driver.prototype.getConnectionNeo4j,
 			query:Driver.prototype.queryNeo4j
-		}),	
+		}),
 		'pg': new Driver({
-//			Driver:(()=>{const { Client } = require('pg'); return Client}),
+			Driver:(()=>{const { Client } = require('pg'); return Client}),
 			requireName:'pg',
 			autoCommit:true,
-			connectOptions:{"connectionTimeoutMillis": 2000},
+			connectOptions:{"connectionTimeoutMillis": 4000},
 			getResultArray:((r)=>r.rows),
 			prepareIsQuery:true,
 			query:Driver.prototype.queryCPG,
