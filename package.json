@@ -18,6 +18,9 @@
     "node-red": "^3.0.2",
     "node-red-node-test-helper": "*"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "test": "mocha \"test/**/*_spec.js\"",
     "fix": "npm audit fix",
